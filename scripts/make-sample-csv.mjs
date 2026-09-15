@@ -37,7 +37,7 @@ const today = new Date();
 today.setHours(0, 0, 0, 0);
 
 for (const flow of FLOWS) {
-  const rows = [["date", "status", "id", "category", "severity", "jira", "note"]];
+  const rows = [["LAST_RUN", "MATCH_RESULT", "id", "category", "severity", "jira", "note"]];
   let counter = 1000;
   for (let d = 45; d >= 0; d--) {
     const day = new Date(today.getTime() - d * 86400000);

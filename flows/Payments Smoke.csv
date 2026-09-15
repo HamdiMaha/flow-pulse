@@ -1,4 +1,4 @@
-"date","status","id","category","severity","jira","note"
+"LAST_RUN","MATCH_RESULT","id","category","severity","jira","note"
 "2026-07-26","passed","PAY-1001","Refund","Low","","under 300ms"
 "2026-07-26","passed","PAY-1002","Card form","Low","","matched baseline"
 "2026-07-26","passed","PAY-1003","Refund","Critical","","under 300ms"

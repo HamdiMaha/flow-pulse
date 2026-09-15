@@ -1,4 +1,4 @@
-"date","status","id","category","severity","jira","note"
+"LAST_RUN","MATCH_RESULT","id","category","severity","jira","note"
 "2026-07-26","passed","LOG-1001","Password step","Critical","","matched baseline"
 "2026-07-26","passed","LOG-1002","Email step","High","","under 300ms"
 "2026-07-26","passed","LOG-1003","Password step","Critical","","no errors"

@@ -236,6 +236,12 @@ export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flo
       id: slug(defaultFlowName),
       name: defaultFlowName,
       source: "Uploaded CSV",
+      presentColumns: {
+        id: iId >= 0,
+        category: iCategory >= 0,
+        severity: iSeverity >= 0,
+        jira: iJira >= 0,
+      },
       categories: [...new Set(results.map((x) => x.category))],
       results,
       extraColumns: extraColumns.length ? extraColumns : undefined,

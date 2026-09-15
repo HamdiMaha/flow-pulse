@@ -113,6 +113,7 @@ export function App() {
           results={inRange}
           stats={stats}
           extraColumns={flow.extraColumns}
+          presentColumns={flow.presentColumns}
           onExport={(rows) =>
             downloadCsv(
               `${flow.id}_${range.start}_${range.end}.csv`,

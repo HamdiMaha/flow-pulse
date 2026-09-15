@@ -25,6 +25,17 @@ export interface Flow {
   results: FlowResult[];
   /** Original headers of the unmapped CSV columns, in file order. */
   extraColumns?: string[];
+  /** Which of the fixed columns actually exist in the source — date and
+   *  status are always required so always present. Undefined (e.g. the
+   *  generated sample flows) means "all present". Drives which columns
+   *  ResultsTable shows, so a file with no id/category/severity/jira
+   *  doesn't display fabricated placeholder values for them. */
+  presentColumns?: {
+    id: boolean;
+    category: boolean;
+    severity: boolean;
+    jira: boolean;
+  };
 }
 
 export type TimeframePreset = "today" | "7d" | "30d" | "90d" | "custom";

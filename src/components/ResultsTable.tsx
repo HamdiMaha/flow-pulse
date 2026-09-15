@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { FlowResult, FlowStats, ResultStatus } from "../types";
+import type { Flow, FlowResult, FlowStats, ResultStatus } from "../types";
 import { fmtDay } from "../lib";
 
 type Filter = "all" | ResultStatus;
@@ -10,16 +10,25 @@ export function ResultsTable({
   results,
   stats,
   extraColumns = [],
+  presentColumns,
   onExport,
 }: {
   results: FlowResult[];
   stats: FlowStats;
   extraColumns?: string[];
+  presentColumns?: Flow["presentColumns"];
   onExport: (rows: FlowResult[]) => void;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(PAGE);
+
+  // Undefined presentColumns (e.g. the generated sample flows) means "show
+  // everything", matching the original always-on behavior.
+  const showId = presentColumns?.id ?? true;
+  const showCategory = presentColumns?.category ?? true;
+  const showSeverity = presentColumns?.severity ?? true;
+  const showJira = presentColumns?.jira ?? true;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -37,7 +46,13 @@ export function ResultsTable({
   }, [results, filter, query]);
 
   const shown = filtered.slice(0, limit);
-  const colCount = 6 + extraColumns.length;
+  const colCount =
+    2 + // date, status
+    (showId ? 1 : 0) +
+    (showCategory ? 1 : 0) +
+    (showSeverity ? 1 : 0) +
+    (showJira ? 1 : 0) +
+    extraColumns.length;
 
   const tabs: { key: Filter; label: string; count: number }[] = [
     { key: "all", label: "All", count: stats.total },
@@ -84,10 +99,10 @@ export function ResultsTable({
             <tr>
               <th>Date</th>
               <th>Status</th>
-              <th>ID</th>
-              <th>Category</th>
-              <th>Severity</th>
-              <th>Jira</th>
+              {showId && <th>ID</th>}
+              {showCategory && <th>Category</th>}
+              {showSeverity && <th>Severity</th>}
+              {showJira && <th>Jira</th>}
               {extraColumns.map((c) => (
                 <th key={c}>{c}</th>
               ))}
@@ -102,10 +117,10 @@ export function ResultsTable({
                     {r.status.toUpperCase()}
                   </span>
                 </td>
-                <td className="c-id">{r.id}</td>
-                <td>{r.category}</td>
-                <td>{r.severity}</td>
-                <td className="c-jira">{r.jira ?? "–"}</td>
+                {showId && <td className="c-id">{r.id}</td>}
+                {showCategory && <td>{r.category}</td>}
+                {showSeverity && <td>{r.severity}</td>}
+                {showJira && <td className="c-jira">{r.jira ?? "–"}</td>}
                 {extraColumns.map((c) => (
                   <td key={c} className="c-extra">
                     {r.extra?.[c] || "–"}

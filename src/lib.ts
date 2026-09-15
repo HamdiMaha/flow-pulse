@@ -111,25 +111,30 @@ export function buildAiSummary(
       ? "That’s flat vs the previous period."
       : `That’s ${delta < 0 ? "down" : "up"} ${deltaAbs} pts vs the previous period.`;
 
-  // Top failing category.
-  const byCat = new Map<string, number>();
-  for (const r of resultsInRange(flow, range)) {
-    if (r.status === "failed") byCat.set(r.category, (byCat.get(r.category) ?? 0) + 1);
-  }
-  let topCat = "";
-  let topCount = 0;
-  for (const [cat, n] of byCat) {
-    if (n > topCount) {
-      topCat = cat;
-      topCount = n;
+  // Top failing category — only meaningful when the source actually has one.
+  let catLine = "";
+  if (flow.presentColumns?.category ?? true) {
+    const byCat = new Map<string, number>();
+    for (const r of resultsInRange(flow, range)) {
+      if (r.status === "failed") byCat.set(r.category, (byCat.get(r.category) ?? 0) + 1);
     }
+    let topCat = "";
+    let topCount = 0;
+    for (const [cat, n] of byCat) {
+      if (n > topCount) {
+        topCat = cat;
+        topCount = n;
+      }
+    }
+    catLine =
+      stats.failed === 0
+        ? "No failures in this window."
+        : `${topCount} of ${stats.failed} failures are category “${topCat}”.`;
   }
-  const catLine =
-    stats.failed === 0
-      ? "No failures in this window."
-      : `${topCount} of ${stats.failed} failures are category “${topCat}”.`;
 
-  return `${flow.name} is ${health} at ${rate}% over ${label}. ${trend} ${catLine}`;
+  return [`${flow.name} is ${health} at ${rate}% over ${label}.`, trend, catLine]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** Compact facts for the Gemini prompt — numbers only, no free reasoning. */

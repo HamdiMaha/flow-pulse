@@ -39,10 +39,15 @@ renaming your files. Only a date column and a status column are mandatory.
 One row = one test result. The flow name always comes from the **file name**,
 never from a column — see above.
 
+**The table only shows columns your file actually has.** Date and Status are
+always shown (they're required). ID / Category / Severity / Jira only appear
+if the file has a matching column — no fabricated `ROW-1` ids or
+"Uncategorized" placeholders when it doesn't.
+
 **Any column not in the list above is kept too** — it shows in the dashboard
 table as an extra column under its original header, is included in search, and
 is written back out by Export CSV. So a file with `environment`, `browser`,
-`duration_ms`, `build` … gets one table column each, after Jira.
+`duration_ms`, `build` … gets one table column each, after the fixed ones.
 
 ### Status values
 

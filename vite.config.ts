@@ -55,7 +55,13 @@ function geminiEndpoint(env: Record<string, string>): PluginOption {
 
           if (!configured) {
             // No usable credentials: return empty so the front end uses its
-            // rule-based text, without a noisy error in the console.
+            // rule-based text. Logged (not silent) so a misconfigured .env
+            // is easy to spot in the terminal running `npm run dev`.
+            console.warn(
+              `[api/ai] not configured — apiKey=${apiKey ? "set" : "empty"} ` +
+                `vertexCreds=${vertexCreds ? "set" : "empty"} ` +
+                `vertexProject=${vertexProject ? "set" : "empty"}`
+            );
             return res.end(JSON.stringify({ text: "", reason: "no_key" }));
           }
 
@@ -88,6 +94,9 @@ function geminiEndpoint(env: Record<string, string>): PluginOption {
 
             res.end(JSON.stringify({ text: out.text ?? "" }));
           } catch (err) {
+            // Printed to the terminal running `npm run dev` — the browser
+            // never sees this (askAI() only checks res.ok and falls back).
+            console.error("[api/ai] Gemini call failed:", err);
             res.statusCode = 502;
             res.end(
               JSON.stringify({ error: String((err as Error).message ?? err) })

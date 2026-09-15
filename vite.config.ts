@@ -4,19 +4,35 @@ import react from "@vitejs/plugin-react";
 /* ------------------------------------------------------------------ *
  * Dev-only /api/ai endpoint.
  *
- * Holds the Gemini key server-side (never shipped to the browser) and
- * proxies the AI summary / Ask box to Google. Same idea as the
- * SiteAnalyzer backend, minus the separate Python process.
+ * Holds the Gemini credentials server-side (never shipped to the
+ * browser) and proxies the AI summary / Ask box to Google. Same idea
+ * as the SiteAnalyzer backend, minus the separate Python process —
+ * and the same two auth modes SiteAnalyzer supports:
  *
- * No GEMINI_API_KEY in the environment -> responds 503, and the front
- * end quietly falls back to its built-in rule-based text.
+ *   - API key (GEMINI_API_KEY / GOOGLE_API_KEY) — the simple mode, a
+ *     key from https://aistudio.google.com/apikey.
+ *   - Vertex AI service account (GOOGLE_APPLICATION_CREDENTIALS
+ *     pointing at a service-account JSON file) — the mode issued by
+ *     managed/work Google Cloud orgs, which typically don't hand out
+ *     simple API keys. Also needs GOOGLE_CLOUD_PROJECT (the JSON's
+ *     project_id) and optionally GOOGLE_CLOUD_LOCATION (defaults to
+ *     us-central1).
+ *
+ * Whichever is present wins (API key first). Neither configured ->
+ * responds with empty text, and the front end quietly falls back to
+ * its built-in rule-based text.
  *
  * Runs under `npm run dev` only. `vite build` / `vite preview` do not
  * include it — a real deployment needs an actual backend route.
  * ------------------------------------------------------------------ */
 function geminiEndpoint(env: Record<string, string>): PluginOption {
   const apiKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY || "";
+  const vertexCreds = env.GOOGLE_APPLICATION_CREDENTIALS || "";
+  const vertexProject = env.GOOGLE_CLOUD_PROJECT || "";
+  const vertexLocation = env.GOOGLE_CLOUD_LOCATION || "us-central1";
+  const useVertex = !apiKey && !!vertexCreds && !!vertexProject;
   const model = env.GEMINI_MODEL || "gemini-2.0-flash";
+  const configured = !!apiKey || useVertex;
 
   const SYSTEM =
     "You are a QA analyst reading automated test-run stats for a single flow. " +
@@ -37,9 +53,9 @@ function geminiEndpoint(env: Record<string, string>): PluginOption {
         req.on("end", async () => {
           res.setHeader("content-type", "application/json");
 
-          if (!apiKey) {
-            // No key: return empty so the front end uses its rule-based text,
-            // without a noisy error in the browser console.
+          if (!configured) {
+            // No usable credentials: return empty so the front end uses its
+            // rule-based text, without a noisy error in the console.
             return res.end(JSON.stringify({ text: "", reason: "no_key" }));
           }
 
@@ -53,7 +69,18 @@ function geminiEndpoint(env: Record<string, string>): PluginOption {
                   )}`;
 
             const { GoogleGenAI } = await import("@google/genai");
-            const ai = new GoogleGenAI({ apiKey });
+            const ai = useVertex
+              ? new GoogleGenAI({
+                  vertexai: true,
+                  project: vertexProject,
+                  location: vertexLocation,
+                  // Pass the key file explicitly rather than relying on the
+                  // GOOGLE_APPLICATION_CREDENTIALS env var, since loadEnv()
+                  // only gives us a plain object, not a real process env.
+                  googleAuthOptions: { keyFile: vertexCreds },
+                })
+              : new GoogleGenAI({ apiKey });
+
             const out = await ai.models.generateContent({
               model,
               contents: prompt,

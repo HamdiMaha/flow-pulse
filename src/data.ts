@@ -5,16 +5,21 @@ import { SAMPLE_FLOWS } from "./sampleData";
 /* ------------------------------------------------------------------ *
  * Data source.
  *
- * Every *.csv file in the project's /flows folder is read at build /
- * dev-server time and turned into a Flow. The file name is the flow
- * name ("Support Tiles.csv" -> "Support Tiles"), unless the CSV has
- * its own `flow` column, which wins.
+ * Every *.csv file anywhere under the project's /flows folder (including
+ * subfolders) is read at build / dev-server time and turned into a Flow.
+ * The file name is the flow name ("Support Tiles.csv" -> "Support Tiles").
+ *
+ * Scanning subfolders is what lets a SharePoint document library that's
+ * synced locally via OneDrive be used as a source: create a subfolder
+ * under /flows that's a directory junction pointing at the synced
+ * SharePoint folder (see flows/README.md), and its CSVs are picked up
+ * the same as any other file here.
  *
  * If /flows has no usable CSV, the dashboard falls back to the
  * generated SAMPLE_FLOWS so it still renders.
  * ------------------------------------------------------------------ */
 
-const csvFiles = import.meta.glob("../flows/*.csv", {
+const csvFiles = import.meta.glob("../flows/**/*.csv", {
   query: "?raw",
   import: "default",
   eager: true,

@@ -1,9 +1,40 @@
 # flows/
 
-Drop one **CSV file per flow** in this folder. The dev server / build reads
-every `*.csv` here and turns it into a flow on the dashboard. Save a file,
-and the page reloads with the new data. Remove all CSVs to fall back to the
-built-in sample data.
+Drop one **CSV file per flow** in this folder (subfolders included — see
+"Reading from SharePoint" below). The dev server / build reads every `*.csv`
+under here and turns it into a flow on the dashboard. Save a file, and the
+page reloads with the new data. Remove all CSVs to fall back to the built-in
+sample data.
+
+## Reading from SharePoint
+
+If your CSVs live in a SharePoint document library that's **synced locally
+via OneDrive** (the "Sync" button in SharePoint/Teams — files show up in
+File Explorer), you don't need any API or login code: just point this app
+at that synced folder.
+
+Create a subfolder here named `sharepoint` that's actually a **directory
+junction** to the synced folder — no admin rights needed on Windows:
+
+```powershell
+mkdir "$env:USERPROFILE\flow-pulse\flows" -ErrorAction SilentlyContinue
+mklink /J "C:\Users\<you>\flow-pulse\flows\sharepoint" "C:\Users\<you>\OneDrive - CompanyName\LibraryName\FolderName"
+```
+
+(Replace the second path with your actual synced folder — find it by
+opening the library in SharePoint, clicking **Sync**, then locating it in
+File Explorer under `OneDrive - <company>` in the sidebar, and copying its
+address bar path.)
+
+Restart `npm run dev` afterward. Every CSV SharePoint syncs down now shows
+up as a flow automatically, on top of anything you drop directly into
+`flows/`. `flows/sharepoint` is git-ignored (see `.gitignore`) since it's a
+machine-specific pointer, not real content to commit.
+
+**Only have SharePoint access through a browser (no local sync)?** That
+needs a real integration — an Azure AD app registration, Microsoft Graph
+API permissions, and OAuth — which is a bigger project than this file
+covers; ask if you want that built instead.
 
 ## File name
 

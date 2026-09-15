@@ -52,7 +52,7 @@ export function App() {
     <div className="app">
       <header className="page-head">
         <div>
-          <h1>Flow Pulse</h1>
+          <h1>QA Dashboard</h1>
           <p className="tagline">
             Select a flow and a timeframe to see its score and every result
             behind it.
@@ -123,7 +123,7 @@ export function App() {
       </section>
 
       <footer className="page-foot">
-        Flow Pulse · {flow.name} · {stats.total.toLocaleString()} results in
+        QA Dashboard · {flow.name} · {stats.total.toLocaleString()} results in
         window
       </footer>
     </div>

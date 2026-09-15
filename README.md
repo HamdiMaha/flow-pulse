@@ -1,4 +1,4 @@
-# Flow Pulse
+# QA Dashboard
 
 A QA dashboard for test **flows**: pick a flow and a timeframe to see its pass
 rate and every result behind it.

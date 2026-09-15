@@ -28,7 +28,7 @@ renaming your files. Only a date column and a status column are mandatory.
 
 | meaning  | required | accepted header names | notes |
 |----------|----------|-----------------------|-------|
-| date     | yes | `date`, `run_date`, `test_date`, `execution_date`, `executed_at`, `timestamp`, `datetime`, `created_at` | `2026-09-01` preferred; `09/01/2026` and Excel dates also parse |
+| date     | yes | `date`, `run_date`, `last_run`, `test_date`, `execution_date`, `executed_at`, `timestamp`, `datetime`, `created_at` | `2026-09-01` preferred; `09/01/2026` and Excel dates also parse |
 | status   | yes | `status`, `result`, `test_result`, `match_result`, `comparison_flag`, `comparaison_flag`, `flag`, `outcome`, `verdict`, `pass_fail` | see value list below |
 | id       | no  | `id`, `test_id`, `case_id`, `test_case_id`, `tile_id`, `check_id` | auto-filled if missing |
 | category | no  | `category`, `type`, `tile`, `tile_type`, `group`, `area`, `component` | grouping shown in the table and AI summary |

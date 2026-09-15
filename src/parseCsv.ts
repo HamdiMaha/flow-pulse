@@ -152,6 +152,7 @@ export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flo
   const iDate = col(
     "date",
     "rundate",
+    "lastrun",
     "testdate",
     "executiondate",
     "executedat",

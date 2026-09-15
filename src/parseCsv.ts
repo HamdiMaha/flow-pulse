@@ -1,13 +1,18 @@
 import type { Flow, FlowResult, ResultStatus, Severity } from "./types";
 
 /* ------------------------------------------------------------------ *
- * Parse an uploaded CSV into the Flow[] shape the dashboard expects.
+ * Parse an uploaded CSV into a single Flow — one file, one flow, named
+ * after the file (the `defaultFlowName` the caller passes in).
  *
  * Expected columns (header row, case-insensitive, any order):
- *   flow, date, status, id, category, severity, jira, note
+ *   date, status, id, category, severity, jira, note
  *
- * Only `date` and `status` are required. Rows are grouped into flows
- * by the `flow` column; missing `flow` -> one flow called "Imported".
+ * Only `date` and `status` are required. Any other column (including one
+ * literally called "flow", if your export happens to have one) is kept
+ * as an "extra" column rather than used to regroup rows — real QA
+ * exports often have a `flow`/`suite`/`scenario` field that means
+ * something else entirely, so it must never silently override the file
+ * name.
  * ------------------------------------------------------------------ */
 
 /** Split one CSV line, honouring "quoted, fields" and "" escapes. */
@@ -144,7 +149,6 @@ export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flo
     return -1;
   };
 
-  const iFlow = col("flow", "flowname", "suite", "testsuite", "scenario");
   const iDate = col(
     "date",
     "rundate",
@@ -190,29 +194,29 @@ export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flo
   }
 
   // Every column that isn't one of the six shown with a fixed label goes
-  // through as an "extra" column, under its original header. `flow` is
-  // structural (never shown); `note` stays mapped for search/AI but also
-  // appears here under its own header.
+  // through as an "extra" column, under its original header — including
+  // one literally called "flow"/"suite"/"scenario", if the file has one.
+  // `note` stays mapped for search/AI but also appears here under its
+  // own header.
   const consumed = new Set(
-    [iFlow, iDate, iStatus, iId, iCategory, iSeverity, iJira].filter((i) => i >= 0)
+    [iDate, iStatus, iId, iCategory, iSeverity, iJira].filter((i) => i >= 0)
   );
   const extraIdx = rawHeader
     .map((_, i) => i)
     .filter((i) => !consumed.has(i));
   const extraColumns = extraIdx.map((i) => rawHeader[i] || `column ${i + 1}`);
 
-  const byFlow = new Map<string, FlowResult[]>();
+  const results: FlowResult[] = [];
 
   for (let r = 1; r < lines.length; r++) {
     const cells = splitCsvLine(lines[r]);
-    const flowName = (iFlow >= 0 ? cells[iFlow] : "").trim() || defaultFlowName;
 
     const extra: Record<string, string> = {};
     for (const i of extraIdx) {
       extra[rawHeader[i] || `column ${i + 1}`] = (cells[i] ?? "").trim();
     }
 
-    const result: FlowResult = {
+    results.push({
       id: (iId >= 0 && cells[iId]) || `ROW-${r}`,
       date: normDate(cells[iDate] ?? ""),
       status: normStatus(cells[iStatus] ?? ""),
@@ -221,20 +225,19 @@ export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flo
       jira: iJira >= 0 && cells[iJira] ? cells[iJira] : null,
       note: iNote >= 0 ? cells[iNote] ?? "" : "",
       extra: extraColumns.length ? extra : undefined,
-    };
-    if (!byFlow.has(flowName)) byFlow.set(flowName, []);
-    byFlow.get(flowName)!.push(result);
+    });
   }
 
-  return [...byFlow.entries()].map(([name, results]) => {
-    results.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-    return {
-      id: slug(name),
-      name,
+  results.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+  return [
+    {
+      id: slug(defaultFlowName),
+      name: defaultFlowName,
       source: "Uploaded CSV",
       categories: [...new Set(results.map((x) => x.category))],
       results,
       extraColumns: extraColumns.length ? extraColumns : undefined,
-    };
-  });
+    },
+  ];
 }

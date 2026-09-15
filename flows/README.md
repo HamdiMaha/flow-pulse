@@ -14,8 +14,10 @@ Login Journey.csv   ->  "Login Journey"
 Payments Smoke.csv  ->  "Payments Smoke"
 ```
 
-(If a CSV has its own `flow` column, that value wins and one file can hold
-several flows.)
+One file always = one flow, named after the file — even if the CSV itself
+has a column called `flow`, `suite`, or `scenario` (common in real QA
+exports for something unrelated). That column is kept and shown as a
+regular extra column; it never renames or splits the flow.
 
 ## Columns
 
@@ -33,9 +35,9 @@ renaming your files. Only a date column and a status column are mandatory.
 | severity | no  | `severity`, `priority`, `sev`, `impact` | `Low` / `Medium` / `High` / `Critical` (also `P1`–`P4`, `blocker`, `major`, `minor`) |
 | jira     | no  | `jira`, `jira_key`, `jira_id`, `ticket`, `issue`, `issue_key`, `bug` | blank = no link |
 | note     | no  | `note`, `notes`, `comment`, `comments`, `message`, `details`, `description` | free text, searchable |
-| flow     | no  | `flow`, `flow_name`, `suite`, `test_suite`, `scenario` | overrides the file name; lets one file carry many flows |
 
-One row = one test result.
+One row = one test result. The flow name always comes from the **file name**,
+never from a column — see above.
 
 **Any column not in the list above is kept too** — it shows in the dashboard
 table as an extra column under its original header, is included in search, and

@@ -88,7 +88,6 @@ export function App() {
           </div>
           <div className="card-head-actions">
             <span className="sync-pill">↻ {flow.source}</span>
-            <button className="btn">Edit mapping</button>
           </div>
         </div>
 

@@ -71,6 +71,7 @@ const STATUS_MAP: Record<string, ResultStatus> = {
   no: "failed",
   n: "failed",
   "0": "failed",
+  "-1": "failed",
   nok: "failed",
   ko: "failed",
   mismatch: "failed",
@@ -92,8 +93,13 @@ const STATUS_MAP: Record<string, ResultStatus> = {
 };
 
 function normStatus(v: string): ResultStatus {
-  const s = v.toLowerCase().trim().replace(/[_-]+/g, " ");
-  return STATUS_MAP[s] ?? "ignored";
+  // Check the raw value first — a leading "-" (as in "-1") must survive for
+  // the numeric-code lookup below. Only fall back to the underscore/dash ->
+  // space form for multi-word phrases like "no_match" -> "no match".
+  const raw = v.toLowerCase().trim();
+  if (raw in STATUS_MAP) return STATUS_MAP[raw];
+  const spaced = raw.replace(/[_-]+/g, " ");
+  return STATUS_MAP[spaced] ?? "ignored";
 }
 
 function normSeverity(v: string): Severity {
@@ -184,8 +190,27 @@ export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flo
     "component"
   );
   const iSeverity = col("severity", "priority", "sev", "impact");
-  const iJira = col("jira", "jirakey", "jiraid", "ticket", "issue", "issuekey", "bug");
-  const iNote = col("note", "notes", "comment", "comments", "message", "details", "description");
+  const iJira = col(
+    "jira",
+    "jirakey",
+    "jiraid",
+    "jirastory",
+    "ticket",
+    "issue",
+    "issuekey",
+    "bug"
+  );
+  const iNote = col(
+    "note",
+    "notes",
+    "comment",
+    "comments",
+    "message",
+    "details",
+    "description",
+    "errornote",
+    "logfile"
+  );
 
   if (iDate < 0 || iStatus < 0) {
     throw new Error(

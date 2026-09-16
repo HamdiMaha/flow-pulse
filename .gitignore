@@ -17,3 +17,6 @@ gcp-*.json
 # machine-specific, and its contents (someone else's QA data) don't
 # belong in this repo. See flows/README.md.
 /flows/sharepoint/
+
+# Real QA data — kept local only, not pushed to this public repo.
+/flows/PT5282.csv

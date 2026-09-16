@@ -71,7 +71,6 @@ const STATUS_MAP: Record<string, ResultStatus> = {
   no: "failed",
   n: "failed",
   "0": "failed",
-  "-1": "failed",
   nok: "failed",
   ko: "failed",
   mismatch: "failed",
@@ -82,6 +81,7 @@ const STATUS_MAP: Record<string, ResultStatus> = {
   different: "failed",
   diff: "failed",
   // ignored
+  "-1": "ignored",
   ignore: "ignored",
   ignored: "ignored",
   skip: "ignored",

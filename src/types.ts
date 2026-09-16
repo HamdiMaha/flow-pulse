@@ -23,6 +23,10 @@ export interface Flow {
   source: string;
   categories: string[];
   results: FlowResult[];
+  /** Bucket this flow belongs to (e.g. "Tiles", "Mobility", "BRS") — the
+   *  name of its immediate subfolder under flows/. Undefined for a flow
+   *  sitting directly in flows/ with no bucket folder. */
+  group?: string;
   /** Original headers of the unmapped CSV columns, in file order. */
   extraColumns?: string[];
   /** Which of the fixed columns actually exist in the source — date and

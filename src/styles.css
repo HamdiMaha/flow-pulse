@@ -114,12 +114,30 @@ h1 {
 /* ---------- flow picker ---------- */
 .flow-pick {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  gap: 12px;
   margin-top: 28px;
 }
 
-.flow-pick label {
+.bucket-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-count {
+  opacity: 0.65;
+  font-weight: 700;
+  margin-left: 1px;
+}
+
+.flow-select-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.flow-select-row label {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -127,7 +145,7 @@ h1 {
   color: var(--ink-soft);
 }
 
-.flow-pick select,
+.flow-select-row select,
 .date-inputs input {
   background: var(--surface);
   border: 1px solid var(--border-strong);
@@ -136,7 +154,7 @@ h1 {
   font-weight: 600;
 }
 
-.flow-pick select {
+.flow-select-row select {
   min-width: 240px;
 }
 

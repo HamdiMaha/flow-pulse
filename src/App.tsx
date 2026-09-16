@@ -11,6 +11,7 @@ import {
   resultsInRange,
   toCsv,
 } from "./lib";
+import { FlowPicker } from "./components/FlowPicker";
 import { Timeframe } from "./components/Timeframe";
 import { StatTiles } from "./components/StatTiles";
 import { AiSummary } from "./components/AiSummary";
@@ -65,20 +66,7 @@ export function App() {
         </span>
       </header>
 
-      <div className="flow-pick">
-        <label htmlFor="flow-select">Flow</label>
-        <select
-          id="flow-select"
-          value={flowId}
-          onChange={(e) => setFlowId(e.target.value)}
-        >
-          {FLOWS.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name} ({f.results.length})
-            </option>
-          ))}
-        </select>
-      </div>
+      <FlowPicker flows={FLOWS} flowId={flowId} onSelect={setFlowId} />
 
       <section className="card">
         <div className="card-head">

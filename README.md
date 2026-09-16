@@ -15,7 +15,7 @@ npm run build    # type-check + production build to dist/
 
 | Area | Behaviour |
 | --- | --- |
-| **Flow picker** | Switch between flows; count in parens is lifetime result volume. |
+| **Flow picker** | Switch between flows; count in parens is lifetime result volume. Flows can be grouped into buckets (e.g. Tiles / Mobility / BRS, one per subfolder under `flows/`) — shown as chips, or a compact dropdown past 6 buckets. |
 | **Timeframe** | `Today / 7 / 30 / 90 days` presets, or `Custom` with two date pickers. |
 | **Pass rate** | `passed / (passed + failed)` — ignored results are excluded. |
 | **Stat tiles** | Passed / Failed / Ignored counts for the window. |
@@ -64,7 +64,7 @@ src/
   lib.ts         date-range math, stats, rule-based summary, AI context, CSV export
   types.ts       shared types
   App.tsx        state + layout
-  components/    Timeframe, StatTiles, AiSummary, ResultsTable
+  components/    FlowPicker, Timeframe, StatTiles, AiSummary, ResultsTable
 ```
 
 To go live later, replace `src/data.ts` with a fetch to an API that returns the

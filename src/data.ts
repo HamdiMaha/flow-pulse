@@ -15,6 +15,10 @@ import { SAMPLE_FLOWS } from "./sampleData";
  * SharePoint folder (see flows/README.md), and its CSVs are picked up
  * the same as any other file here.
  *
+ * A file's immediate parent folder becomes its "bucket" (Flow.group) —
+ * e.g. flows/sharepoint/Tiles/PT5282.csv -> group "Tiles". A file sitting
+ * directly in flows/ has no group.
+ *
  * If /flows has no usable CSV, the dashboard falls back to the
  * generated SAMPLE_FLOWS so it still renders.
  * ------------------------------------------------------------------ */
@@ -28,11 +32,24 @@ const csvFiles = import.meta.glob("../flows/**/*.csv", {
 function loadFlowsFolder(): Flow[] {
   const flows: Flow[] = [];
   for (const [path, text] of Object.entries(csvFiles)) {
-    const fileName = path.split("/").pop() ?? "flow.csv";
+    // path looks like "../flows/sharepoint/Tiles/PT5282.csv" — take
+    // everything after the "flows" segment so nested paths and the
+    // resulting bucket name resolve correctly no matter how deep.
+    const segments = path.split("/");
+    const flowsIdx = segments.lastIndexOf("flows");
+    const relSegments = flowsIdx >= 0 ? segments.slice(flowsIdx + 1) : segments;
+    const fileName = relSegments[relSegments.length - 1] ?? "flow.csv";
+    const folderSegments = relSegments.slice(0, -1);
+    // The immediate parent folder is the bucket ("Tiles", "Mobility", …).
+    // A file sitting directly in flows/ has no bucket.
+    const group = folderSegments[folderSegments.length - 1];
     const nameFromFile = fileName.replace(/\.csv$/i, "");
     try {
       const parsed = parseCsvToFlows(text, nameFromFile);
-      for (const f of parsed) f.source = `flows/${fileName}`;
+      for (const f of parsed) {
+        f.source = `flows/${relSegments.join("/")}`;
+        f.group = group;
+      }
       flows.push(...parsed);
     } catch (err) {
       // Skip an empty or malformed file rather than blanking the app.

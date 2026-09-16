@@ -31,6 +31,28 @@ up as a flow automatically, on top of anything you drop directly into
 `flows/`. `flows/sharepoint` is git-ignored (see `.gitignore`) since it's a
 machine-specific pointer, not real content to commit.
 
+## Buckets (grouping flows)
+
+Organize flows into buckets — e.g. Tiles, Mobility, BRS — by putting them in
+subfolders. A file's **immediate parent folder name becomes its bucket**:
+
+```
+flows/sharepoint/Tiles/Support Tiles.csv     -> flow "Support Tiles", bucket "Tiles"
+flows/sharepoint/Mobility/Roaming.csv        -> flow "Roaming", bucket "Mobility"
+flows/sharepoint/BRS/Billing.csv             -> flow "Billing", bucket "BRS"
+flows/Login Journey.csv                      -> flow "Login Journey", no bucket
+```
+
+So if your SharePoint library already has folders per team/area, just point
+`flows/sharepoint` at the library root (not a specific subfolder) and the
+folder structure becomes the bucket structure automatically.
+
+In the app this shows up as a bucket picker above the flow dropdown, and the
+dropdown groups flows under their bucket. With more than 6 buckets it
+switches from chips to a compact dropdown so the header stays uncluttered.
+No buckets in use (no subfolders) → no bucket picker at all, unchanged from
+before.
+
 **Only have SharePoint access through a browser (no local sync)?** That
 needs a real integration — an Azure AD app registration, Microsoft Graph
 API permissions, and OAuth — which is a bigger project than this file

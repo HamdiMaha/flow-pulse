@@ -68,6 +68,10 @@ interface FlowSpec {
   id: string;
   name: string;
   source: string;
+  /** Bucket shown in the flow picker — demonstrates the grouping UI even
+   *  with no real /flows folder structure yet. Left undefined for one
+   *  flow on purpose, to show the mixed grouped/ungrouped layout. */
+  group?: string;
   categories: string[];
   /** approx results generated per day */
   perDay: number;
@@ -86,6 +90,7 @@ const FLOW_SPECS: FlowSpec[] = [
     id: "support-tiles",
     name: "Support Tiles",
     source: "Auto-synced daily from SharePoint",
+    group: "Tiles",
     categories: [
       "Renewal Tile",
       "Payment Tile",
@@ -103,6 +108,7 @@ const FLOW_SPECS: FlowSpec[] = [
     id: "checkout-funnel",
     name: "Checkout Funnel",
     source: "Auto-synced hourly from GitHub Actions",
+    group: "Payments",
     categories: [
       "Cart",
       "Address",
@@ -131,6 +137,7 @@ const FLOW_SPECS: FlowSpec[] = [
     id: "mobile-sync",
     name: "Mobile Sync",
     source: "Auto-synced daily from SharePoint",
+    group: "Mobility",
     categories: ["Login", "Pull", "Push", "Conflict", "Offline Queue"],
     perDay: 10,
     failRate: 0.14,
@@ -198,6 +205,7 @@ function buildFlow(spec: FlowSpec): Flow {
     id: spec.id,
     name: spec.name,
     source: spec.source,
+    group: spec.group,
     categories: spec.categories,
     results,
   };

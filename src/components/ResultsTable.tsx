@@ -109,8 +109,13 @@ export function ResultsTable({
             </tr>
           </thead>
           <tbody>
-            {shown.map((r) => (
-              <tr key={r.id}>
+            {shown.map((r, i) => (
+              // r.id comes from the source data (e.g. a "tile_id" column)
+              // and isn't guaranteed unique per row — some real exports
+              // repeat it across many rows. Index it too so React never
+              // collides two rows onto the same key (which corrupts
+              // rendering exactly where filtering seems "broken").
+              <tr key={`${r.id}-${i}`}>
                 <td className="c-date">{fmtDay(r.date)}</td>
                 <td>
                   <span className={`badge badge-${r.status}`}>

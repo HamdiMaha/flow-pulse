@@ -111,17 +111,32 @@ function normSeverity(v: string): Severity {
   return "Medium";
 }
 
-/** Accepts 2026-09-01, 2026/09/01, 09/01/2026, or an ISO timestamp. */
+/** Accepts 2026-09-01, 09/01/2026 (US, month/day), 15.09.2026 (day.month,
+ *  Canada/Europe), 2026.09.01 / 2026/09/01, or an ISO timestamp. The two
+ *  separators carry different conventions on purpose — same digits, but
+ *  "/" reads month-first (US) and "." reads day-first (everywhere a dot
+ *  is the normal date separator), since collapsing both into one rule
+ *  silently turns e.g. 15.09.2026 into an invalid "month 15". */
 function normDate(v: string): string {
   const t = v.trim();
   if (/^\d{4}-\d{2}-\d{2}/.test(t)) return t.slice(0, 10);
-  const parts = t.split(/[/.]/);
-  if (parts.length === 3) {
-    const [a, b, c] = parts;
-    if (a.length === 4)
-      return `${a}-${b.padStart(2, "0")}-${c.slice(0, 2).padStart(2, "0")}`;
-    return `${c.slice(0, 4)}-${a.padStart(2, "0")}-${b.padStart(2, "0")}`;
+
+  const isNumeric = (parts: string[]) => parts.every((p) => /^\d+$/.test(p));
+
+  const dotParts = t.split(".");
+  if (dotParts.length === 3 && isNumeric(dotParts)) {
+    const [a, b, c] = dotParts;
+    if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c.slice(0, 2).padStart(2, "0")}`; // YYYY.MM.DD
+    return `${c.slice(0, 4)}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`; // DD.MM.YYYY
   }
+
+  const slashParts = t.split("/");
+  if (slashParts.length === 3 && isNumeric(slashParts)) {
+    const [a, b, c] = slashParts;
+    if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c.slice(0, 2).padStart(2, "0")}`; // YYYY/MM/DD
+    return `${c.slice(0, 4)}-${a.padStart(2, "0")}-${b.padStart(2, "0")}`; // MM/DD/YYYY
+  }
+
   const d = new Date(t);
   return Number.isNaN(d.getTime()) ? t : d.toISOString().slice(0, 10);
 }

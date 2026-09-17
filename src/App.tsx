@@ -15,6 +15,7 @@ import { FlowPicker } from "./components/FlowPicker";
 import { Timeframe } from "./components/Timeframe";
 import { StatTiles } from "./components/StatTiles";
 import { AiSummary } from "./components/AiSummary";
+import { Breakdown } from "./components/Breakdown";
 import { ResultsTable } from "./components/ResultsTable";
 
 export function App() {
@@ -23,6 +24,12 @@ export function App() {
   const [customRange, setCustomRange] = useState<DateRange>(
     rangeForPreset("30d")
   );
+  const [query, setQuery] = useState("");
+
+  const handleSelectFlow = (id: string) => {
+    setFlowId(id);
+    setQuery(""); // a filter from one flow rarely means anything on another
+  };
 
   const flow = useMemo(
     () => FLOWS.find((f) => f.id === flowId) ?? FLOWS[0],
@@ -66,7 +73,7 @@ export function App() {
         </span>
       </header>
 
-      <FlowPicker flows={FLOWS} flowId={flowId} onSelect={setFlowId} />
+      <FlowPicker flows={FLOWS} flowId={flowId} onSelect={handleSelectFlow} />
 
       <section className="card">
         <div className="card-head">
@@ -96,11 +103,15 @@ export function App() {
           prevStats={prevStats}
         />
 
+        <Breakdown flow={flow} results={inRange} onPick={setQuery} />
+
         <ResultsTable
           results={inRange}
           stats={stats}
           extraColumns={flow.extraColumns}
           presentColumns={flow.presentColumns}
+          query={query}
+          onQueryChange={setQuery}
           onExport={(rows) =>
             downloadCsv(
               `${flow.id}_${range.start}_${range.end}.csv`,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Flow, FlowResult, FlowStats, ResultStatus } from "../types";
 import { fmtDay } from "../lib";
 
@@ -11,17 +11,27 @@ export function ResultsTable({
   stats,
   extraColumns = [],
   presentColumns,
+  query,
+  onQueryChange,
   onExport,
 }: {
   results: FlowResult[];
   stats: FlowStats;
   extraColumns?: string[];
   presentColumns?: Flow["presentColumns"];
+  /** Lifted to App so the Breakdown panel can drive it by clicking a value. */
+  query: string;
+  onQueryChange: (q: string) => void;
   onExport: (rows: FlowResult[]) => void;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
-  const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(PAGE);
+
+  // Reset pagination whenever the query changes, including externally
+  // (a Breakdown row click), not just from typing in the search box.
+  useEffect(() => {
+    setLimit(PAGE);
+  }, [query, filter]);
 
   // Undefined presentColumns (e.g. the generated sample flows) means "show
   // everything", matching the original always-on behavior.
@@ -69,10 +79,7 @@ export function ResultsTable({
             <button
               key={t.key}
               className={filter === t.key ? "ftab active" : "ftab"}
-              onClick={() => {
-                setFilter(t.key);
-                setLimit(PAGE);
-              }}
+              onClick={() => setFilter(t.key)}
             >
               {t.label} <span className="ftab-count">{t.count}</span>
             </button>
@@ -83,10 +90,7 @@ export function ResultsTable({
           type="search"
           placeholder="Search id, jira, notes…"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setLimit(PAGE);
-          }}
+          onChange={(e) => onQueryChange(e.target.value)}
         />
         <button className="btn" onClick={() => onExport(filtered)}>
           Export CSV

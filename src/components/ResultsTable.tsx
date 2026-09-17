@@ -1,34 +1,39 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Flow, FlowResult, FlowStats, ResultStatus } from "../types";
+import type { Flow, FlowResult, FlowStats, TableFilter } from "../types";
+import type { Insights } from "../insights";
+import { resultKey } from "../insights";
 import { fmtDay } from "../lib";
-
-type Filter = "all" | ResultStatus;
 
 const PAGE = 60;
 
 export function ResultsTable({
   results,
   stats,
+  insights,
   extraColumns = [],
   presentColumns,
+  filter,
+  onFilterChange,
   query,
   onQueryChange,
   onExport,
 }: {
   results: FlowResult[];
   stats: FlowStats;
+  insights: Insights;
   extraColumns?: string[];
   presentColumns?: Flow["presentColumns"];
-  /** Lifted to App so the Breakdown panel can drive it by clicking a value. */
+  /** Lifted to App so the Insights panel can drive these too. */
+  filter: TableFilter;
+  onFilterChange: (f: TableFilter) => void;
   query: string;
   onQueryChange: (q: string) => void;
   onExport: (rows: FlowResult[]) => void;
 }) {
-  const [filter, setFilter] = useState<Filter>("all");
   const [limit, setLimit] = useState(PAGE);
 
-  // Reset pagination whenever the query changes, including externally
-  // (a Breakdown row click), not just from typing in the search box.
+  // Reset pagination whenever the query or filter changes, including
+  // externally (an Insights/Breakdown click), not just from the UI here.
   useEffect(() => {
     setLimit(PAGE);
   }, [query, filter]);
@@ -43,7 +48,21 @@ export function ResultsTable({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return results.filter((r) => {
-      if (filter !== "all" && r.status !== filter) return false;
+      switch (filter) {
+        case "all":
+          break;
+        case "untracked":
+          if (!(r.status === "failed" && !r.jira)) return false;
+          break;
+        case "new":
+          if (!insights.newFailureKeys.has(resultKey(r))) return false;
+          break;
+        case "flaky":
+          if (!insights.flakyIds.has(r.id)) return false;
+          break;
+        default:
+          if (r.status !== filter) return false;
+      }
       if (!q) return true;
       return (
         r.id.toLowerCase().includes(q) ||
@@ -53,7 +72,7 @@ export function ResultsTable({
         Object.values(r.extra ?? {}).some((v) => v.toLowerCase().includes(q))
       );
     });
-  }, [results, filter, query]);
+  }, [results, filter, query, insights]);
 
   const shown = filtered.slice(0, limit);
   const colCount =
@@ -64,11 +83,18 @@ export function ResultsTable({
     (showJira ? 1 : 0) +
     extraColumns.length;
 
-  const tabs: { key: Filter; label: string; count: number }[] = [
+  const tabs: { key: TableFilter; label: string; count: number }[] = [
     { key: "all", label: "All", count: stats.total },
     { key: "passed", label: "Passed", count: stats.passed },
     { key: "failed", label: "Failed", count: stats.failed },
     { key: "ignored", label: "Ignored", count: stats.ignored },
+    { key: "untracked", label: "Untracked", count: insights.untrackedCount },
+    ...(insights.canTrackIdentity
+      ? ([
+          { key: "new", label: "New", count: insights.newFailureCount },
+          { key: "flaky", label: "Flaky", count: insights.flakyCount },
+        ] as const)
+      : []),
   ];
 
   return (
@@ -79,7 +105,7 @@ export function ResultsTable({
             <button
               key={t.key}
               className={filter === t.key ? "ftab active" : "ftab"}
-              onClick={() => setFilter(t.key)}
+              onClick={() => onFilterChange(t.key)}
             >
               {t.label} <span className="ftab-count">{t.count}</span>
             </button>
@@ -125,6 +151,16 @@ export function ResultsTable({
                   <span className={`badge badge-${r.status}`}>
                     {r.status.toUpperCase()}
                   </span>
+                  {insights.canTrackIdentity && insights.newFailureKeys.has(resultKey(r)) && (
+                    <span className="badge-flag badge-new" title="First time this has failed">
+                      NEW
+                    </span>
+                  )}
+                  {insights.canTrackIdentity && insights.flakyIds.has(r.id) && (
+                    <span className="badge-flag badge-flaky" title="Has both passed and failed before — inconsistent">
+                      ⚡ FLAKY
+                    </span>
+                  )}
                 </td>
                 {showId && <td className="c-id">{r.id}</td>}
                 {showCategory && <td>{r.category}</td>}

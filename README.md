@@ -20,8 +20,10 @@ npm run build    # type-check + production build to dist/
 | **Pass rate** | `passed / (passed + failed)` — ignored results are excluded. |
 | **Stat tiles** | Passed / Failed / Ignored counts for the window. |
 | **AI summary** | Gemini-written summary + **Ask** box (see below). Falls back to a rule-based sentence when no key is set. |
+| **Insights** | A tester's actual to-do list, not just totals: **New failures** (failing today, wasn't failing before — needs an id that repeats across dates, else hidden), **Untracked** (failing, no Jira link — always available), **Flaky** (genuine pass↔fail oscillation, 2+ transitions — distinct from a fresh regression). Click a tile to filter the table; click again to clear. |
+| **Tile lifecycle** | Only for flows with launch/end date columns (e.g. Tiles' `tile_launch_dt`/`tile_end_dt`): counts of Active / Expired / Upcoming, so a failure on an already-expired config doesn't get chased as a live bug. Hidden when the flow has no such columns. |
 | **Breakdown** | Pick any column the flow actually has (Category/Severity, or any extra column like Region, Plan, Province, Offer) and see pass rate + volume per value, worst first. Click a value to filter the table. Auto-hides columns that are all-unique (ids) or all-identical (no signal), and hides entirely if nothing meaningful to group by. |
-| **Results table** | Fixed columns (Date, Status, ID, Category, Severity, Jira) **plus one column per extra header in the CSV**. Filter tabs, free-text search (incl. extra columns, driven by Breakdown clicks too), `Export CSV` of the current filter, incremental "show more". |
+| **Results table** | Fixed columns (Date, Status, ID, Category, Severity, Jira) **plus one column per extra header in the CSV**. Filter tabs — All/Passed/Failed/Ignored plus Untracked/New/Flaky — free-text search (incl. extra columns, driven by Breakdown/Insights clicks too), `Export CSV` of the current filter, incremental "show more". NEW/FLAKY badges shown inline per row. |
 
 ## AI Summary (Gemini)
 
@@ -65,7 +67,9 @@ src/
   lib.ts         date-range math, stats, rule-based summary, AI context, CSV export
   types.ts       shared types
   App.tsx        state + layout
-  components/    FlowPicker, Timeframe, StatTiles, AiSummary, Breakdown, ResultsTable
+  insights.ts    New/Untracked/Flaky detection, tile lifecycle
+  components/    FlowPicker, Timeframe, StatTiles, TileLifecycle, Insights,
+                 AiSummary, Breakdown, ResultsTable
 ```
 
 To go live later, replace `src/data.ts` with a fetch to an API that returns the

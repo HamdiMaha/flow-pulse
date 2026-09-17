@@ -59,3 +59,8 @@ export interface FlowStats {
   /** 0–100, computed against passed + failed (ignored excluded). */
   passRate: number;
 }
+
+/** The results table's active filter — status tabs plus the derived
+ *  tester-facing views (new / untracked / flaky). Shared between
+ *  ResultsTable and the Insights panel that drives it. */
+export type TableFilter = "all" | ResultStatus | "untracked" | "new" | "flaky";

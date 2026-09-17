@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { FLOWS, USING_SAMPLE } from "./data";
-import type { DateRange, TimeframePreset } from "./types";
+import type { DateRange, TableFilter, TimeframePreset } from "./types";
 import {
   buildAiSummary,
   computeStats,
@@ -11,9 +11,12 @@ import {
   resultsInRange,
   toCsv,
 } from "./lib";
+import { buildInsights, computeTileLifecycle } from "./insights";
 import { FlowPicker } from "./components/FlowPicker";
 import { Timeframe } from "./components/Timeframe";
 import { StatTiles } from "./components/StatTiles";
+import { TileLifecycle } from "./components/TileLifecycle";
+import { Insights } from "./components/Insights";
 import { AiSummary } from "./components/AiSummary";
 import { Breakdown } from "./components/Breakdown";
 import { ResultsTable } from "./components/ResultsTable";
@@ -25,10 +28,18 @@ export function App() {
     rangeForPreset("30d")
   );
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<TableFilter>("all");
 
   const handleSelectFlow = (id: string) => {
     setFlowId(id);
-    setQuery(""); // a filter from one flow rarely means anything on another
+    // A filter/search from one flow rarely means anything on another.
+    setQuery("");
+    setFilter("all");
+  };
+
+  const handleBreakdownPick = (value: string) => {
+    setQuery(value);
+    setFilter("all"); // let the search value drive it, not a stale status tab
   };
 
   const flow = useMemo(
@@ -49,6 +60,12 @@ export function App() {
   const summary = useMemo(
     () => buildAiSummary(flow, range, stats, prevStats),
     [flow, range, stats, prevStats]
+  );
+
+  const insights = useMemo(() => buildInsights(flow, inRange), [flow, inRange]);
+  const tileLifecycle = useMemo(
+    () => computeTileLifecycle(flow, inRange),
+    [flow, inRange]
   );
 
   const handlePreset = (p: TimeframePreset) => {
@@ -95,6 +112,10 @@ export function App() {
 
         <StatTiles stats={stats} range={range} />
 
+        <TileLifecycle data={tileLifecycle} />
+
+        <Insights insights={insights} filter={filter} onFilter={setFilter} />
+
         <AiSummary
           summary={summary}
           flow={flow}
@@ -103,13 +124,16 @@ export function App() {
           prevStats={prevStats}
         />
 
-        <Breakdown flow={flow} results={inRange} onPick={setQuery} />
+        <Breakdown flow={flow} results={inRange} onPick={handleBreakdownPick} />
 
         <ResultsTable
           results={inRange}
           stats={stats}
+          insights={insights}
           extraColumns={flow.extraColumns}
           presentColumns={flow.presentColumns}
+          filter={filter}
+          onFilterChange={setFilter}
           query={query}
           onQueryChange={setQuery}
           onExport={(rows) =>

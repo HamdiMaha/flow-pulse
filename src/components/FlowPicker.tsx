@@ -4,21 +4,16 @@ import type { Flow } from "../types";
 const ALL = "__all__";
 const UNGROUPED = "__ungrouped__";
 
-// Beyond this many buttons, a chip row would wrap into multiple crowded
-// lines just to pick a filter — switch to a compact dropdown instead.
-// Below it, chips are one click and more scannable. Applied to both the
-// bucket row and the flow row, independently.
+// Beyond this many real buckets, a chip row would wrap into multiple
+// crowded lines just to pick a filter — switch to a compact dropdown
+// instead. Below it, chips are one click and more scannable.
 const CHIP_LIMIT = 6;
 
 /**
  * Flow selector with an optional bucket row above it (e.g. Tiles /
  * Mobility / BRS — one per immediate subfolder under flows/, see
  * Flow.group in data.ts). The bucket row only renders when at least one
- * flow actually has a group; otherwise this is just the flow picker.
- *
- * Both rows use the same chips-when-few/dropdown-when-many rule, sized
- * independently — a bucket with 20 flows in it still gets a compact
- * flow dropdown even while the bucket row itself is still chips.
+ * flow actually has a group; otherwise this is just the plain dropdown.
  */
 export function FlowPicker({
   flows,
@@ -38,7 +33,7 @@ export function FlowPicker({
   );
   const hasUngrouped = flows.some((f) => !f.group);
   const showBuckets = groups.length > 0;
-  const useBucketDropdown = groups.length > CHIP_LIMIT;
+  const useDropdown = groups.length > CHIP_LIMIT;
 
   const [bucket, setBucket] = useState<string>(ALL);
 
@@ -70,11 +65,9 @@ export function FlowPicker({
     </option>
   );
 
-  const useFlowDropdown = visible.length > CHIP_LIMIT;
-
   return (
     <div className="flow-pick">
-      {showBuckets && useBucketDropdown && (
+      {showBuckets && useDropdown && (
         <div className="flow-select-row">
           <label htmlFor="bucket-select">Bucket</label>
           <select
@@ -95,7 +88,7 @@ export function FlowPicker({
         </div>
       )}
 
-      {showBuckets && !useBucketDropdown && (
+      {showBuckets && !useDropdown && (
         <div className="bucket-row">
           <button
             className={bucket === ALL ? "chip active" : "chip"}
@@ -123,48 +116,31 @@ export function FlowPicker({
         </div>
       )}
 
-      {useFlowDropdown ? (
-        <div className="flow-select-row">
-          <label htmlFor="flow-select">Flow</label>
-          <select
-            id="flow-select"
-            value={flowId}
-            onChange={(e) => onSelect(e.target.value)}
-          >
-            {showBuckets && bucket === ALL ? (
-              <>
-                {hasUngrouped && (
-                  <optgroup label="Other">
-                    {flows.filter((f) => !f.group).map(option)}
-                  </optgroup>
-                )}
-                {groups.map((g) => (
-                  <optgroup key={g} label={g}>
-                    {flows.filter((f) => f.group === g).map(option)}
-                  </optgroup>
-                ))}
-              </>
-            ) : (
-              visible.map(option)
-            )}
-          </select>
-        </div>
-      ) : (
-        <div className="flow-chip-row">
-          <span className="flow-chip-label">Flow</span>
-          <div className="chip-row">
-            {visible.map((f) => (
-              <button
-                key={f.id}
-                className={f.id === flowId ? "chip active" : "chip"}
-                onClick={() => onSelect(f.id)}
-              >
-                {f.name} <span className="chip-count">{f.results.length}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="flow-select-row">
+        <label htmlFor="flow-select">Flow</label>
+        <select
+          id="flow-select"
+          value={flowId}
+          onChange={(e) => onSelect(e.target.value)}
+        >
+          {showBuckets && bucket === ALL ? (
+            <>
+              {hasUngrouped && (
+                <optgroup label="Other">
+                  {flows.filter((f) => !f.group).map(option)}
+                </optgroup>
+              )}
+              {groups.map((g) => (
+                <optgroup key={g} label={g}>
+                  {flows.filter((f) => f.group === g).map(option)}
+                </optgroup>
+              ))}
+            </>
+          ) : (
+            visible.map(option)
+          )}
+        </select>
+      </div>
     </div>
   );
 }

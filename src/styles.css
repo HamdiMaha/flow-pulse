@@ -158,22 +158,6 @@ h1 {
   min-width: 240px;
 }
 
-.flow-chip-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.flow-chip-label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  flex-shrink: 0;
-}
-
 /* ---------- card ---------- */
 .card {
   margin-top: 16px;

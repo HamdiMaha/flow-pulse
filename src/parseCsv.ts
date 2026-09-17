@@ -168,6 +168,7 @@ export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flo
   );
   const iStatus = col(
     "status",
+    "ststus", // common typo — seen in a real export; costs nothing to accept
     "result",
     "testresult",
     "matchresult",
@@ -195,6 +196,7 @@ export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flo
     "jirakey",
     "jiraid",
     "jirastory",
+    "jirastoryid",
     "ticket",
     "issue",
     "issuekey",

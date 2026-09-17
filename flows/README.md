@@ -82,12 +82,12 @@ renaming your files. Only a date column and a status column are mandatory.
 | meaning  | required | accepted header names | notes |
 |----------|----------|-----------------------|-------|
 | date     | yes | `date`, `run_date`, `last_run`, `test_date`, `execution_date`, `executed_at`, `timestamp`, `datetime`, `created_at` | `2026-09-01` preferred; `09/01/2026` and Excel dates also parse |
-| status   | yes | `status`, `result`, `test_result`, `match_result`, `comparison_flag`, `comparaison_flag`, `flag`, `outcome`, `verdict`, `pass_fail` | see value list below |
+| status   | yes | `status`, `ststus` (typo, seen in a real export), `result`, `test_result`, `match_result`, `comparison_flag`, `comparaison_flag`, `flag`, `outcome`, `verdict`, `pass_fail` | see value list below |
 | id       | no  | `id`, `test_id`, `case_id`, `test_case_id`, `tile_id`, `check_id` | auto-filled if missing |
 | category | no  | `category`, `type`, `tile`, `tile_type`, `group`, `area`, `component` | grouping shown in the table and AI summary |
 | severity | no  | `severity`, `priority`, `sev`, `impact` | `Low` / `Medium` / `High` / `Critical` (also `P1`–`P4`, `blocker`, `major`, `minor`) |
-| jira     | no  | `jira`, `jira_key`, `jira_id`, `ticket`, `issue`, `issue_key`, `bug` | blank = no link |
-| note     | no  | `note`, `notes`, `comment`, `comments`, `message`, `details`, `description` | free text, searchable |
+| jira     | no  | `jira`, `jira_key`, `jira_id`, `jira_story`, `jira_story_id`, `ticket`, `issue`, `issue_key`, `bug` | blank = no link |
+| note     | no  | `note`, `notes`, `comment`, `comments`, `message`, `details`, `description`, `error_note`, `log_file` | free text, searchable |
 
 One row = one test result. The flow name always comes from the **file name**,
 never from a column — see above.

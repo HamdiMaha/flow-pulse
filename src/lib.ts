@@ -19,22 +19,23 @@ function today(): Date {
   return d;
 }
 
-/** Resolve a preset to a concrete {start, end} range. */
+/** Resolve a preset to a concrete {start, end} range. All presets run
+ *  through today, inclusive — a file dropped in for today should show up
+ *  under "7 days" immediately, not only once it becomes "yesterday". */
 export function rangeForPreset(preset: TimeframePreset): DateRange {
   const t = today();
   if (preset === "today") {
     const iso = toISO(t);
     return { start: iso, end: iso };
   }
-  const end = new Date(t.getTime() - DAY_MS); // through yesterday
   const spanByPreset: Record<Exclude<TimeframePreset, "today" | "custom">, number> = {
     "7d": 7,
     "30d": 30,
     "90d": 90,
   };
   const span = spanByPreset[preset as "7d" | "30d" | "90d"] ?? 30;
-  const start = new Date(end.getTime() - span * DAY_MS);
-  return { start: toISO(start), end: toISO(end) };
+  const start = new Date(t.getTime() - span * DAY_MS);
+  return { start: toISO(start), end: toISO(t) };
 }
 
 export function resultsInRange(flow: Flow, range: DateRange): FlowResult[] {

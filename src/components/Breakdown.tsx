@@ -92,11 +92,11 @@ export function Breakdown({
   return (
     <div className="breakdown">
       <div className="breakdown-head">
-        <span className="breakdown-kicker">Breakdown</span>
+        <span className="breakdown-kicker">Pass rate by</span>
         <select
           value={activeKey ?? ""}
           onChange={(e) => setDimKey(e.target.value)}
-          aria-label="Break down by"
+          aria-label="Break down pass rate by"
         >
           {dims.map((d) => (
             <option key={d.key} value={d.key}>
@@ -114,15 +114,10 @@ export function Breakdown({
             title={`Filter the table to “${r.value}”`}
           >
             <span className="breakdown-value">{r.value}</span>
-            <span className="breakdown-bar-track">
-              <span
-                className="breakdown-bar-fill"
-                style={{ width: `${Math.max(2, r.passRate)}%` }}
-                data-low={r.passRate < 90}
-              />
+            <span className={`breakdown-rate${r.passRate < 90 ? " breakdown-rate-low" : ""}`}>
+              {r.passRate.toFixed(0)}%
             </span>
-            <span className="breakdown-rate">{r.passRate.toFixed(0)}%</span>
-            <span className="breakdown-count">{r.total}</span>
+            <span className="breakdown-count">{r.total} results</span>
           </button>
         ))}
       </div>

@@ -535,14 +535,14 @@ h2 {
 
 .breakdown-row {
   display: grid;
-  grid-template-columns: minmax(90px, 180px) 1fr auto auto;
+  grid-template-columns: minmax(90px, 1fr) auto auto;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
   width: 100%;
   background: var(--surface-sunken);
   border: 0;
   border-radius: var(--radius-sm);
-  padding: 8px 12px;
+  padding: 10px 14px;
   cursor: pointer;
   text-align: left;
   font: inherit;
@@ -560,35 +560,22 @@ h2 {
   white-space: nowrap;
 }
 
-.breakdown-bar-track {
-  background: var(--border);
-  border-radius: 999px;
-  height: 6px;
-  overflow: hidden;
-}
-
-.breakdown-bar-fill {
-  display: block;
-  height: 100%;
-  background: var(--green);
-  border-radius: 999px;
-}
-
-.breakdown-bar-fill[data-low="true"] {
-  background: var(--red);
-}
-
 .breakdown-rate {
-  font-weight: 700;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
-  width: 38px;
+  color: var(--green);
+  min-width: 44px;
   text-align: right;
+}
+
+.breakdown-rate-low {
+  color: var(--red);
 }
 
 .breakdown-count {
   color: var(--ink-faint);
   font-size: 12px;
-  width: 28px;
+  white-space: nowrap;
   text-align: right;
 }
 

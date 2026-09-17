@@ -15,7 +15,7 @@ npm run build    # type-check + production build to dist/
 
 | Area | Behaviour |
 | --- | --- |
-| **Flow picker** | Switch between flows; count in parens is lifetime result volume. A flow = every CSV in one folder merged together (drop in a new daily export and it joins the same flow, filtered by whatever Timeframe you pick — see `flows/README.md`). Flows can be grouped into buckets (the folder one level above), shown as chips, or a compact dropdown past 6 buckets. |
+| **Flow picker** | Switch between flows; count next to each is lifetime result volume. A flow = every CSV in one folder merged together (drop in a new daily export and it joins the same flow, filtered by whatever Timeframe you pick — see `flows/README.md`). Flows can be grouped into buckets (the folder one level above). Both the bucket row and the flow row independently show as chips (≤6) or switch to a compact dropdown beyond that — e.g. a bucket with 20 flows still gets a dropdown even while the bucket row itself stays chips. |
 | **Timeframe** | `Today / 7 / 30 / 90 days` presets, or `Custom` with two date pickers. |
 | **Pass rate** | `passed / (passed + failed)` — ignored results are excluded. |
 | **Stat tiles** | Passed / Failed / Ignored counts for the window. |

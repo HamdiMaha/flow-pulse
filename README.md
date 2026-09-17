@@ -15,7 +15,7 @@ npm run build    # type-check + production build to dist/
 
 | Area | Behaviour |
 | --- | --- |
-| **Flow picker** | Switch between flows; count in parens is lifetime result volume. Flows can be grouped into buckets (e.g. Tiles / Mobility / BRS, one per subfolder under `flows/`) — shown as chips, or a compact dropdown past 6 buckets. |
+| **Flow picker** | Switch between flows; count in parens is lifetime result volume. A flow = every CSV in one folder merged together (drop in a new daily export and it joins the same flow, filtered by whatever Timeframe you pick — see `flows/README.md`). Flows can be grouped into buckets (the folder one level above), shown as chips, or a compact dropdown past 6 buckets. |
 | **Timeframe** | `Today / 7 / 30 / 90 days` presets, or `Custom` with two date pickers. |
 | **Pass rate** | `passed / (passed + failed)` — ignored results are excluded. |
 | **Stat tiles** | Passed / Failed / Ignored counts for the window. |
@@ -60,7 +60,8 @@ flows/
   README.md              CSV format
 
 src/
-  data.ts        reads flows/*.csv (via import.meta.glob), else SAMPLE_FLOWS
+  data.ts        reads flows/*.csv (via import.meta.glob), merges per-folder
+                 daily files into one flow each, else SAMPLE_FLOWS
   parseCsv.ts    CSV text -> Flow[]
   sampleData.ts  seeded generated fallback data
   ai.ts          client for the /api/ai (Gemini) endpoint

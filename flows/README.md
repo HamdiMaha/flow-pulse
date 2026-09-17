@@ -1,10 +1,10 @@
 # flows/
 
-Drop one **CSV file per flow** in this folder (subfolders included — see
-"Reading from SharePoint" below). The dev server / build reads every `*.csv`
-under here and turns it into a flow on the dashboard. Save a file, and the
-page reloads with the new data. Remove all CSVs to fall back to the built-in
-sample data.
+Drop CSV files in this folder (subfolders included — see "One flow = one
+folder" and "Reading from SharePoint" below). The dev server / build reads
+every `*.csv` under here and turns it into a flow on the dashboard. Save a
+file, and the page reloads with the new data. Remove all CSVs to fall back
+to the built-in sample data.
 
 ## Reading from SharePoint
 
@@ -31,46 +31,82 @@ up as a flow automatically, on top of anything you drop directly into
 `flows/`. `flows/sharepoint` is git-ignored (see `.gitignore`) since it's a
 machine-specific pointer, not real content to commit.
 
+## One flow = one folder, one file per day
+
+**A flow is every CSV file sitting directly in the same folder, merged
+together** — not one file per flow. Drop a new daily/periodic export into
+that folder and it's automatically pulled into the same flow's history;
+nothing new appears in the flow list, the existing flow just gets more data.
+This is what makes the Timeframe picker work the way you'd expect: pick
+"Today" and you see today's file's rows; pick a 3-day range and the rows
+from whichever of that flow's daily files fall in that window are combined
+into one view.
+
+```
+flows/sharepoint/Tiles/PT-4586/2026-09-01.csv
+flows/sharepoint/Tiles/PT-4586/2026-09-02.csv
+flows/sharepoint/Tiles/PT-4586/2026-09-03.csv
+```
+→ one flow, **"PT-4586"** (named after the folder), with all three days'
+results merged. The sync pill shows `flows/sharepoint/Tiles/PT-4586 · 3 files
+merged`.
+
+A folder with just **one** file behaves exactly as before — that file is its
+own flow, named after the file. No extra step needed for a flow that doesn't
+get daily exports yet.
+
 ## Buckets (grouping flows)
 
-Organize flows into buckets — e.g. Tiles, Mobility, BRS — by putting them in
-subfolders. A file's **immediate parent folder name becomes its bucket**:
+The bucket shown in the picker is the folder **one level above** the flow's
+folder:
 
 ```
-flows/sharepoint/Tiles/Support Tiles.csv     -> flow "Support Tiles", bucket "Tiles"
-flows/sharepoint/Mobility/Roaming.csv        -> flow "Roaming", bucket "Mobility"
-flows/sharepoint/BRS/Billing.csv             -> flow "Billing", bucket "BRS"
-flows/Login Journey.csv                      -> flow "Login Journey", no bucket
+flows/sharepoint/Tiles/PT-4586/2026-09-01.csv   -> flow "PT-4586", bucket "Tiles"
+flows/sharepoint/Tiles/PT-5483/2026-09-01.csv   -> flow "PT-5483", bucket "Tiles"
+flows/sharepoint/Add a Line/2026-07-24.csv      -> flow "Add a Line", no bucket
+flows/Login Journey.csv                         -> flow "Login Journey", no bucket
 ```
 
-So if your SharePoint library already has folders per team/area, just point
-`flows/sharepoint` at the library root (not a specific subfolder) and the
-folder structure becomes the bucket structure automatically.
+("Add a Line" here has no separate bucket wrapper — its files sit directly
+one level under the `sharepoint` junction, so there's nothing above it to be
+a bucket. If you want it to show as a bucket too, add one more folder level,
+e.g. `flows/sharepoint/Add a Line/Add a Line/2026-07-24.csv`.)
 
-In the app this shows up as a bucket picker above the flow dropdown, and the
-dropdown groups flows under their bucket. With more than 6 buckets it
-switches from chips to a compact dropdown so the header stays uncluttered.
-No buckets in use (no subfolders) → no bucket picker at all, unchanged from
-before.
+So if your SharePoint library already has folders per team/area, with a
+subfolder per flow inside each, the folder structure becomes both the
+bucket structure *and* the per-flow file-merging automatically.
+
+**Migrating existing loose files:** if you already have multiple files
+sitting directly in one bucket folder representing *different* flows (e.g.
+`Tiles/PT-4586.csv` and `Tiles/PT-5483.csv` side by side), move each into
+its own subfolder — `Tiles/PT-4586/PT-4586.csv`, `Tiles/PT-5483/PT-5483.csv`
+— otherwise, under the rule above, they'd now merge into a single flow named
+"Tiles", which is not what you want.
+
+In the app the bucket picker shows above the flow dropdown, and the dropdown
+groups flows under their bucket. With more than 6 buckets it switches from
+chips to a compact dropdown so the header stays uncluttered. No buckets in
+use (no subfolders) → no bucket picker at all, unchanged from before.
 
 **Only have SharePoint access through a browser (no local sync)?** That
 needs a real integration — an Azure AD app registration, Microsoft Graph
 API permissions, and OAuth — which is a bigger project than this file
 covers; ask if you want that built instead.
 
-## File name
+## Flow name
 
-The file name is the flow name shown in the dropdown:
+For a flow whose files live in their own folder (see above), the **folder
+name** is the flow name. For a lone file sitting directly in `flows/` with
+no folder of its own, the **file name** is the flow name:
 
 ```
-Login Journey.csv   ->  "Login Journey"
-Payments Smoke.csv  ->  "Payments Smoke"
+Login Journey.csv                        ->  flow "Login Journey" (lone file)
+sharepoint/Tiles/PT-4586/2026-09-01.csv  ->  flow "PT-4586" (folder name)
 ```
 
-One file always = one flow, named after the file — even if the CSV itself
-has a column called `flow`, `suite`, or `scenario` (common in real QA
-exports for something unrelated). That column is kept and shown as a
-regular extra column; it never renames or splits the flow.
+Either way, a CSV's own `flow`, `suite`, or `scenario` column (common in real
+QA exports for something unrelated) never renames or splits the flow — it's
+just kept and shown as a regular extra column.
 
 ## Columns
 
@@ -89,8 +125,8 @@ renaming your files. Only a date column and a status column are mandatory.
 | jira     | no  | `jira`, `jira_key`, `jira_id`, `jira_story`, `jira_story_id`, `ticket`, `issue`, `issue_key`, `bug` | blank = no link |
 | note     | no  | `note`, `notes`, `comment`, `comments`, `message`, `details`, `description`, `error_note`, `log_file` | free text, searchable |
 
-One row = one test result. The flow name always comes from the **file name**,
-never from a column — see above.
+One row = one test result. The flow name comes from the folder or file name
+(see "Flow name" above), never from a column.
 
 **The table only shows columns your file actually has.** Date and Status are
 always shown (they're required). ID / Category / Severity / Jira only appear

@@ -126,7 +126,7 @@ function normDate(v: string): string {
   return Number.isNaN(d.getTime()) ? t : d.toISOString().slice(0, 10);
 }
 
-function slug(name: string): string {
+export function slug(name: string): string {
   return (
     name
       .toLowerCase()

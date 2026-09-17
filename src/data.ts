@@ -1,5 +1,5 @@
 import type { Flow } from "./types";
-import { parseCsvToFlows } from "./parseCsv";
+import { parseCsvToFlows, slug } from "./parseCsv";
 import { SAMPLE_FLOWS } from "./sampleData";
 
 /* ------------------------------------------------------------------ *
@@ -7,17 +7,29 @@ import { SAMPLE_FLOWS } from "./sampleData";
  *
  * Every *.csv file anywhere under the project's /flows folder (including
  * subfolders) is read at build / dev-server time and turned into a Flow.
- * The file name is the flow name ("Support Tiles.csv" -> "Support Tiles").
+ *
+ * A flow = every CSV file sitting DIRECTLY in the same folder, merged
+ * into one — that's what lets a daily/periodic export (a new file
+ * dropped in each day) accumulate into one continuous flow instead of
+ * becoming a new flow every time. The folder's name is the flow's name.
+ * A folder holding just one file behaves exactly like before: that file
+ * is its own flow, named after the file.
+ *
+ * The bucket (Flow.group) shown in the picker is the folder ONE level
+ * above the flow's folder — e.g.:
+ *
+ *   flows/sharepoint/Tiles/PT-4586/2026-09-01.csv   -> flow "PT-4586", bucket "Tiles"
+ *   flows/sharepoint/Add a Line/2026-09-17.csv       -> flow "Add a Line", no bucket
+ *                                                        ("sharepoint" is our own
+ *                                                        junction mount-point name,
+ *                                                        not a real bucket)
+ *   flows/Login Journey.csv                          -> flow "Login Journey", no bucket
  *
  * Scanning subfolders is what lets a SharePoint document library that's
  * synced locally via OneDrive be used as a source: create a subfolder
  * under /flows that's a directory junction pointing at the synced
  * SharePoint folder (see flows/README.md), and its CSVs are picked up
  * the same as any other file here.
- *
- * A file's immediate parent folder becomes its "bucket" (Flow.group) —
- * e.g. flows/sharepoint/Tiles/PT5282.csv -> group "Tiles". A file sitting
- * directly in flows/ has no group.
  *
  * If /flows has no usable CSV, the dashboard falls back to the
  * generated SAMPLE_FLOWS so it still renders.
@@ -29,33 +41,99 @@ const csvFiles = import.meta.glob("../flows/**/*.csv", {
   eager: true,
 }) as Record<string, string>;
 
+/** Everything after the "flows" path segment, e.g.
+ *  ["sharepoint", "Tiles", "PT-4586", "2026-09-01.csv"]. */
+function relSegmentsOf(path: string): string[] {
+  const segments = path.split("/");
+  const flowsIdx = segments.lastIndexOf("flows");
+  return flowsIdx >= 0 ? segments.slice(flowsIdx + 1) : segments;
+}
+
+/** Combine same-folder file parts into one Flow. Single-file folders
+ *  pass through untouched. */
+function mergeFlowParts(name: string, parts: Flow[]): Flow {
+  if (parts.length === 1) return parts[0];
+
+  const results = parts.flatMap((f) => f.results);
+  results.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+  const extraColumns = [...new Set(parts.flatMap((f) => f.extraColumns ?? []))];
+  const categories = [...new Set(parts.flatMap((f) => f.categories))];
+  const presentColumns = {
+    id: parts.some((f) => f.presentColumns?.id ?? true),
+    category: parts.some((f) => f.presentColumns?.category ?? true),
+    severity: parts.some((f) => f.presentColumns?.severity ?? true),
+    jira: parts.some((f) => f.presentColumns?.jira ?? true),
+  };
+
+  return {
+    id: slug(name),
+    name,
+    source: "", // set by the caller once the merge count is known
+    categories,
+    results,
+    extraColumns: extraColumns.length ? extraColumns : undefined,
+    presentColumns,
+  };
+}
+
 function loadFlowsFolder(): Flow[] {
-  const flows: Flow[] = [];
+  // Group every CSV by its immediate containing folder first — everyone
+  // in the same folder is the same flow.
+  const byFolder = new Map<string, { relSegments: string[]; text: string }[]>();
   for (const [path, text] of Object.entries(csvFiles)) {
-    // path looks like "../flows/sharepoint/Tiles/PT5282.csv" — take
-    // everything after the "flows" segment so nested paths and the
-    // resulting bucket name resolve correctly no matter how deep.
-    const segments = path.split("/");
-    const flowsIdx = segments.lastIndexOf("flows");
-    const relSegments = flowsIdx >= 0 ? segments.slice(flowsIdx + 1) : segments;
-    const fileName = relSegments[relSegments.length - 1] ?? "flow.csv";
-    const folderSegments = relSegments.slice(0, -1);
-    // The immediate parent folder is the bucket ("Tiles", "Mobility", …).
-    // A file sitting directly in flows/ has no bucket.
-    const group = folderSegments[folderSegments.length - 1];
-    const nameFromFile = fileName.replace(/\.csv$/i, "");
-    try {
-      const parsed = parseCsvToFlows(text, nameFromFile);
-      for (const f of parsed) {
-        f.source = `flows/${relSegments.join("/")}`;
-        f.group = group;
-      }
-      flows.push(...parsed);
-    } catch (err) {
-      // Skip an empty or malformed file rather than blanking the app.
-      console.warn(`[flows] skipped ${fileName}: ${(err as Error).message}`);
-    }
+    const relSegments = relSegmentsOf(path);
+    const folderKey = relSegments.slice(0, -1).join("/"); // "" = directly in flows/
+    const list = byFolder.get(folderKey) ?? [];
+    list.push({ relSegments, text });
+    byFolder.set(folderKey, list);
   }
+
+  const flows: Flow[] = [];
+
+  for (const [folderKey, files] of byFolder) {
+    const folderSegments = folderKey ? folderKey.split("/") : [];
+
+    if (folderSegments.length === 0) {
+      // Loose file directly in flows/ — its own flow, no bucket.
+      for (const { relSegments, text } of files) {
+        const fileName = relSegments[relSegments.length - 1];
+        const nameFromFile = fileName.replace(/\.csv$/i, "");
+        try {
+          const parsed = parseCsvToFlows(text, nameFromFile);
+          for (const f of parsed) f.source = `flows/${relSegments.join("/")}`;
+          flows.push(...parsed);
+        } catch (err) {
+          console.warn(`[flows] skipped ${fileName}: ${(err as Error).message}`);
+        }
+      }
+      continue;
+    }
+
+    const flowName = folderSegments[folderSegments.length - 1];
+    const bucketRaw = folderSegments[folderSegments.length - 2];
+    const group =
+      bucketRaw && bucketRaw.toLowerCase() !== "sharepoint" ? bucketRaw : undefined;
+
+    const parts: Flow[] = [];
+    for (const { relSegments, text } of files) {
+      try {
+        parts.push(...parseCsvToFlows(text, flowName));
+      } catch (err) {
+        console.warn(`[flows] skipped ${relSegments.join("/")}: ${(err as Error).message}`);
+      }
+    }
+    if (parts.length === 0) continue;
+
+    const merged = mergeFlowParts(flowName, parts);
+    merged.group = group;
+    merged.source =
+      parts.length > 1
+        ? `flows/${folderKey} · ${parts.length} files merged`
+        : `flows/${files[0].relSegments.join("/")}`;
+    flows.push(merged);
+  }
+
   flows.sort((a, b) => a.name.localeCompare(b.name));
   return flows;
 }

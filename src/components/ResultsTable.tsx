@@ -1,14 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Flow, FlowResult, FlowStats, TableFilter } from "../types";
+import type { Flow, FlowResult, TableFilter } from "../types";
 import type { Insights } from "../insights";
 import { resultKey } from "../insights";
 import { fmtDay } from "../lib";
 
 const PAGE = 60;
 
+function matchesQuery(r: FlowResult, q: string): boolean {
+  if (!q) return true;
+  return (
+    r.id.toLowerCase().includes(q) ||
+    r.category.toLowerCase().includes(q) ||
+    (r.jira ?? "").toLowerCase().includes(q) ||
+    r.note.toLowerCase().includes(q) ||
+    Object.values(r.extra ?? {}).some((v) => v.toLowerCase().includes(q))
+  );
+}
+
 export function ResultsTable({
   results,
-  stats,
   insights,
   extraColumns = [],
   presentColumns,
@@ -19,7 +29,6 @@ export function ResultsTable({
   onExport,
 }: {
   results: FlowResult[];
-  stats: FlowStats;
   insights: Insights;
   extraColumns?: string[];
   presentColumns?: Flow["presentColumns"];
@@ -45,34 +54,34 @@ export function ResultsTable({
   const showSeverity = presentColumns?.severity ?? true;
   const showJira = presentColumns?.jira ?? true;
 
-  const filtered = useMemo(() => {
+  // Search narrows the pool the tabs count against, so "Failed 3" means
+  // "3 of what's currently searched", not the flow-wide total — the tab
+  // counts move as you type, same as the rows below them do.
+  const searchFiltered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return results.filter((r) => {
-      switch (filter) {
-        case "all":
-          break;
-        case "untracked":
-          if (!(r.status === "failed" && !r.jira)) return false;
-          break;
-        case "new":
-          if (!insights.newFailureKeys.has(resultKey(r))) return false;
-          break;
-        case "flaky":
-          if (!insights.flakyIds.has(r.id)) return false;
-          break;
-        default:
-          if (r.status !== filter) return false;
-      }
-      if (!q) return true;
-      return (
-        r.id.toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q) ||
-        (r.jira ?? "").toLowerCase().includes(q) ||
-        r.note.toLowerCase().includes(q) ||
-        Object.values(r.extra ?? {}).some((v) => v.toLowerCase().includes(q))
-      );
-    });
-  }, [results, filter, query, insights]);
+    return q ? results.filter((r) => matchesQuery(r, q)) : results;
+  }, [results, query]);
+
+  const matchesFilter = (r: FlowResult, f: TableFilter): boolean => {
+    switch (f) {
+      case "all":
+        return true;
+      case "untracked":
+        return r.status === "failed" && !r.jira;
+      case "new":
+        return insights.newFailureKeys.has(resultKey(r));
+      case "flaky":
+        return insights.flakyIds.has(r.id);
+      default:
+        return r.status === f;
+    }
+  };
+
+  const filtered = useMemo(
+    () => searchFiltered.filter((r) => matchesFilter(r, filter)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [searchFiltered, filter, insights]
+  );
 
   const shown = filtered.slice(0, limit);
   const colCount =
@@ -83,16 +92,21 @@ export function ResultsTable({
     (showJira ? 1 : 0) +
     extraColumns.length;
 
+  const countFor = (f: TableFilter) =>
+    searchFiltered.filter((r) => matchesFilter(r, f)).length;
+
+  // "Untracked" is deliberately not a tab here — it's still a valid
+  // filter value (the Insights "Untracked failures" tile sets it), just
+  // not one more button cluttering this row on top of it.
   const tabs: { key: TableFilter; label: string; count: number }[] = [
-    { key: "all", label: "All", count: stats.total },
-    { key: "passed", label: "Passed", count: stats.passed },
-    { key: "failed", label: "Failed", count: stats.failed },
-    { key: "ignored", label: "Ignored", count: stats.ignored },
-    { key: "untracked", label: "Untracked", count: insights.untrackedCount },
+    { key: "all", label: "All", count: searchFiltered.length },
+    { key: "passed", label: "Passed", count: countFor("passed") },
+    { key: "failed", label: "Failed", count: countFor("failed") },
+    { key: "ignored", label: "Ignored", count: countFor("ignored") },
     ...(insights.canTrackIdentity
       ? ([
-          { key: "new", label: "New", count: insights.newFailureCount },
-          { key: "flaky", label: "Flaky", count: insights.flakyCount },
+          { key: "new", label: "New", count: countFor("new") },
+          { key: "flaky", label: "Flaky", count: countFor("flaky") },
         ] as const)
       : []),
   ];

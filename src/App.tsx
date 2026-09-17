@@ -128,7 +128,6 @@ export function App() {
 
         <ResultsTable
           results={inRange}
-          stats={stats}
           insights={insights}
           extraColumns={flow.extraColumns}
           presentColumns={flow.presentColumns}

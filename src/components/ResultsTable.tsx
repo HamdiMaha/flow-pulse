@@ -66,8 +66,6 @@ export function ResultsTable({
     switch (f) {
       case "all":
         return true;
-      case "untracked":
-        return r.status === "failed" && !r.jira;
       case "new":
         return insights.newFailureKeys.has(resultKey(r));
       case "flaky":
@@ -95,9 +93,6 @@ export function ResultsTable({
   const countFor = (f: TableFilter) =>
     searchFiltered.filter((r) => matchesFilter(r, f)).length;
 
-  // "Untracked" is deliberately not a tab here — it's still a valid
-  // filter value (the Insights "Untracked failures" tile sets it), just
-  // not one more button cluttering this row on top of it.
   const tabs: { key: TableFilter; label: string; count: number }[] = [
     { key: "all", label: "All", count: searchFiltered.length },
     { key: "passed", label: "Passed", count: countFor("passed") },

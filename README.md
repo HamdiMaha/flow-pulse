@@ -20,10 +20,10 @@ npm run build    # type-check + production build to dist/
 | **Pass rate** | `passed / (passed + failed)` — ignored results are excluded. |
 | **Stat tiles** | Passed / Failed / Ignored counts for the window. |
 | **AI summary** | Gemini-written summary + **Ask** box (see below). Falls back to a rule-based sentence when no key is set. |
-| **Insights** | A tester's actual to-do list, not just totals: **New failures** (failing today, wasn't failing before — needs an id that repeats across dates, else hidden), **Untracked** (failing, no Jira link — always available), **Flaky** (genuine pass↔fail oscillation, 2+ transitions — distinct from a fresh regression). Click a tile to filter the table; click again to clear. |
+| **Insights** | A tester's actual to-do list, not just totals: **New failures** (failing today, wasn't failing before) and **Flaky** (genuine pass↔fail oscillation, 2+ transitions — distinct from a fresh regression). Needs an id that repeats across dates to mean anything — hidden entirely otherwise (e.g. the sample flows). Click a tile to filter the table; click again to clear. |
 | **Tile lifecycle** | Only for flows with launch/end date columns (e.g. Tiles' `tile_launch_dt`/`tile_end_dt`): counts of Active / Expired / Upcoming, so a failure on an already-expired config doesn't get chased as a live bug. Hidden when the flow has no such columns. |
 | **Breakdown** | Pick any column the flow actually has (Category/Severity, or any extra column like Region, Plan, Province, Offer) and see pass rate + volume per value, worst first. Click a value to filter the table. Auto-hides columns that are all-unique (ids) or all-identical (no signal), and hides entirely if nothing meaningful to group by. |
-| **Results table** | Fixed columns (Date, Status, ID, Category, Severity, Jira) **plus one column per extra header in the CSV**. Filter tabs — All/Passed/Failed/Ignored plus New/Flaky when trackable — recompute against whatever's currently searched (type "MFA" and the tab counts narrow to just that). "Untracked" has no tab of its own, only the Insights tile — still fully filterable, one less button in the row. Free-text search (incl. extra columns, driven by Breakdown/Insights clicks too), `Export CSV` of the current filter, incremental "show more". NEW/FLAKY badges shown inline per row. |
+| **Results table** | Fixed columns (Date, Status, ID, Category, Severity, Jira) **plus one column per extra header in the CSV**. Filter tabs — All/Passed/Failed/Ignored plus New/Flaky when trackable — recompute against whatever's currently searched (type "MFA" and the tab counts narrow to just that). Free-text search (incl. extra columns, driven by Breakdown/Insights clicks too), `Export CSV` of the current filter, incremental "show more". NEW/FLAKY badges shown inline per row. |
 
 ## AI Summary (Gemini)
 
@@ -67,7 +67,7 @@ src/
   lib.ts         date-range math, stats, rule-based summary, AI context, CSV export
   types.ts       shared types
   App.tsx        state + layout
-  insights.ts    New/Untracked/Flaky detection, tile lifecycle
+  insights.ts    New/Flaky detection, tile lifecycle
   components/    FlowPicker, Timeframe, StatTiles, TileLifecycle, Insights,
                  AiSummary, Breakdown, ResultsTable
 ```

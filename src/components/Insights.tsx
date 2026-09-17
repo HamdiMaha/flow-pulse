@@ -3,9 +3,11 @@ import type { Insights as InsightsData } from "../insights";
 
 /**
  * The tester's actual to-do list, not just totals: what's new since the
- * last run, what's failing with no Jira ticket yet, and what's flaky
- * (so it doesn't get re-triaged as if it were a real regression). Each
- * tile is a shortcut into the results table's matching filter.
+ * last run, and what's flaky (so it doesn't get re-triaged as if it
+ * were a real regression). Each tile is a shortcut into the results
+ * table's matching filter. Renders nothing when identity can't be
+ * tracked for this flow (see insights.ts) — there's nothing reliable
+ * to show.
  */
 export function Insights({
   insights,
@@ -16,6 +18,8 @@ export function Insights({
   filter: TableFilter;
   onFilter: (f: TableFilter) => void;
 }) {
+  if (!insights.canTrackIdentity) return null;
+
   const items: {
     key: TableFilter;
     label: string;
@@ -24,16 +28,6 @@ export function Insights({
     tone: "warn" | "neutral";
   }[] = [
     {
-      key: "untracked",
-      label: "Untracked failures",
-      value: insights.untrackedCount,
-      hint: "Failing, no Jira ticket linked",
-      tone: "warn",
-    },
-  ];
-
-  if (insights.canTrackIdentity) {
-    items.unshift({
       key: "new",
       label: "New failures",
       value: insights.newFailureCount,
@@ -41,15 +35,15 @@ export function Insights({
         ? `First time failing, as of ${insights.latestDate}`
         : "First time failing",
       tone: "warn",
-    });
-    items.push({
+    },
+    {
       key: "flaky",
       label: "Flaky",
       value: insights.flakyCount,
       hint: "Has passed and failed before — inconsistent, not a clear regression",
       tone: "neutral",
-    });
-  }
+    },
+  ];
 
   return (
     <div className="insights">

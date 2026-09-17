@@ -61,6 +61,6 @@ export interface FlowStats {
 }
 
 /** The results table's active filter — status tabs plus the derived
- *  tester-facing views (new / untracked / flaky). Shared between
- *  ResultsTable and the Insights panel that drives it. */
-export type TableFilter = "all" | ResultStatus | "untracked" | "new" | "flaky";
+ *  tester-facing views (new / flaky). Shared between ResultsTable and
+ *  the Insights panel that drives it. */
+export type TableFilter = "all" | ResultStatus | "new" | "flaky";

@@ -57,6 +57,17 @@ function relSegmentsOf(path: string): string[] {
   return flowsIdx >= 0 ? segments.slice(flowsIdx + 1) : segments;
 }
 
+/** A daily export named exactly `YYYY-MM-DD.csv` (the convention this
+ *  project's README asks for) is treated as authoritative for its rows'
+ *  test date — several teams' own `date` column turns out to be a
+ *  plan/config date, not when the test actually ran, so the filename is
+ *  the one thing we can trust. Anything else (e.g. a legacy single-file
+ *  flow like "PT5282.csv") falls back to the CSV's own date column. */
+function dateFromFileName(fileName: string): string | undefined {
+  const base = fileName.replace(/\.csv$/i, "");
+  return /^\d{4}-\d{2}-\d{2}$/.test(base) ? base : undefined;
+}
+
 /** Combine same-folder file parts into one Flow. Single-file folders
  *  pass through untouched. */
 function mergeFlowParts(name: string, parts: Flow[]): Flow {
@@ -126,7 +137,7 @@ function loadFlowsFolder(): Flow[] {
         const fileName = relSegments[relSegments.length - 1];
         const nameFromFile = fileName.replace(/\.csv$/i, "");
         try {
-          const parsed = parseCsvToFlows(text, nameFromFile);
+          const parsed = parseCsvToFlows(text, nameFromFile, dateFromFileName(fileName));
           for (const f of parsed) {
             f.source = `flows/${relSegments.join("/")}`;
             f.imagesByKey = images.get(folderKey);
@@ -147,7 +158,8 @@ function loadFlowsFolder(): Flow[] {
     const parts: Flow[] = [];
     for (const { relSegments, text } of files) {
       try {
-        parts.push(...parseCsvToFlows(text, flowName));
+        const fileName = relSegments[relSegments.length - 1];
+        parts.push(...parseCsvToFlows(text, flowName, dateFromFileName(fileName)));
       } catch (err) {
         console.warn(`[flows] skipped ${relSegments.join("/")}: ${(err as Error).message}`);
       }

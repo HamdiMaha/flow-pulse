@@ -162,7 +162,20 @@ export function sanitizeKey(v: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
-export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flow[] {
+/**
+ * @param fileDate When the file itself is named after the day it ran (see
+ *   flows/README.md — daily exports named `YYYY-MM-DD.csv`), this is that
+ *   ISO date. It overrides the CSV's own date column as every row's test
+ *   date — several teams' exports have a `date` column that's actually a
+ *   plan/config date, not when the test ran, so the filename is the only
+ *   reliable source. The original column is kept, just demoted to a
+ *   regular extra column instead of being dropped.
+ */
+export function parseCsvToFlows(
+  text: string,
+  defaultFlowName = "Imported",
+  fileDate?: string
+): Flow[] {
   const lines = text
     .replace(/\r\n?/g, "\n")
     .split("\n")
@@ -241,11 +254,18 @@ export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flo
     "logfile"
   );
 
-  if (iDate < 0 || iStatus < 0) {
+  if ((iDate < 0 && !fileDate) || iStatus < 0) {
     throw new Error(
       "CSV needs a date column (date / run_date / timestamp …) and a status " +
         "column (status / result / match_result / comparaison_flag …) in the header row."
     );
+  }
+
+  // When the filename supplies the real test date, the CSV's own date
+  // column isn't the row's date anymore — don't consume it as one, keep it
+  // as a normal (clearly-relabeled) extra column instead of losing it.
+  if (fileDate && iDate >= 0 && rawHeader[iDate]) {
+    rawHeader[iDate] = `${rawHeader[iDate]} (original)`;
   }
 
   // Every column that isn't one of the six shown with a fixed label goes
@@ -254,7 +274,9 @@ export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flo
   // `note` stays mapped for search/AI but also appears here under its
   // own header.
   const consumed = new Set(
-    [iDate, iStatus, iId, iCategory, iSeverity, iJira].filter((i) => i >= 0)
+    [iStatus, iId, iCategory, iSeverity, iJira, ...(fileDate ? [] : [iDate])].filter(
+      (i) => i >= 0
+    )
   );
   const extraIdx = rawHeader
     .map((_, i) => i)
@@ -281,7 +303,7 @@ export function parseCsvToFlows(text: string, defaultFlowName = "Imported"): Flo
 
     results.push({
       id: (iId >= 0 && cells[iId]) || `ROW-${r}`,
-      date: normDate(cells[iDate] ?? ""),
+      date: fileDate ?? normDate(cells[iDate] ?? ""),
       status: normStatus(cells[iStatus] ?? ""),
       category: (iCategory >= 0 && cells[iCategory]) || "Uncategorized",
       severity: normSeverity(iSeverity >= 0 ? cells[iSeverity] ?? "" : ""),

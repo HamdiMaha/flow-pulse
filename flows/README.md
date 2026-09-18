@@ -146,6 +146,26 @@ is written back out by Export CSV. So a file with `environment`, `browser`,
 | **failed**  | `failed`, `fail`, `failure`, `error`, `red`, `false`, `no`, `n`, `0`, `nok`, `ko`, `mismatch`, `no match`, `not equal`, `different`, `diff` |
 | **ignored** | `ignored`, `ignore`, `skip`, `skipped`, `muted`, `n/a`, `na`, `unknown`, and anything unrecognised |
 
+## Screenshots (for the Drill-down view)
+
+If a bucket has a drill-down configured in the dashboard (see the "Drill-down
+columns for…" control at the top of that bucket's flows), clicking a result
+in its detail table looks for a matching screenshot.
+
+Drop the image in the **same folder as that day's CSV**. Name it after
+**every column value of that row**, in the CSV's own column order,
+underscore-separated — e.g. a row `2026-09-01,passed,Search,Postpaid,PlanA,
+Ontario` becomes:
+
+```
+2026-09-01_passed_Search_Postpaid_PlanA_Ontario.png
+```
+
+Matching ignores case, spaces, and punctuation differences, but the
+**values and their order must match the CSV row exactly** — if a value is
+missing or a column's been reordered, the image silently won't be found
+(no error, just no picture). `.png`, `.jpg`, and `.jpeg` are all recognized.
+
 ## Example
 
 ```csv

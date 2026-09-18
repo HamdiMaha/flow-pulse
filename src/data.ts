@@ -1,5 +1,5 @@
 import type { Flow } from "./types";
-import { parseCsvToFlows, slug } from "./parseCsv";
+import { parseCsvToFlows, sanitizeKey, slug } from "./parseCsv";
 import { SAMPLE_FLOWS } from "./sampleData";
 
 /* ------------------------------------------------------------------ *
@@ -41,6 +41,14 @@ const csvFiles = import.meta.glob("../flows/**/*.csv", {
   eager: true,
 }) as Record<string, string>;
 
+// Screenshots the team drops alongside a flow's CSVs, named after every
+// column value of the row they belong to (see parseCsv's imageKey) — read
+// as URLs (not raw text) so they can go straight into an <img src>.
+const imageFiles = import.meta.glob(
+  "../flows/**/*.{png,jpg,jpeg,PNG,JPG,JPEG}",
+  { query: "?url", import: "default", eager: true }
+) as Record<string, string>;
+
 /** Everything after the "flows" path segment, e.g.
  *  ["sharepoint", "Tiles", "PT-4586", "2026-09-01.csv"]. */
 function relSegmentsOf(path: string): string[] {
@@ -77,7 +85,25 @@ function mergeFlowParts(name: string, parts: Flow[]): Flow {
   };
 }
 
+/** Every image found under flows/, grouped by its containing folder and
+ *  keyed within that folder by its sanitized filename (no extension). */
+function imagesByFolder(): Map<string, Record<string, string>> {
+  const map = new Map<string, Record<string, string>>();
+  for (const [path, url] of Object.entries(imageFiles)) {
+    const relSegments = relSegmentsOf(path);
+    const folderKey = relSegments.slice(0, -1).join("/");
+    const fileName = relSegments[relSegments.length - 1];
+    const key = sanitizeKey(fileName.replace(/\.[a-zA-Z]+$/, ""));
+    const rec = map.get(folderKey) ?? {};
+    rec[key] = url;
+    map.set(folderKey, rec);
+  }
+  return map;
+}
+
 function loadFlowsFolder(): Flow[] {
+  const images = imagesByFolder();
+
   // Group every CSV by its immediate containing folder first — everyone
   // in the same folder is the same flow.
   const byFolder = new Map<string, { relSegments: string[]; text: string }[]>();
@@ -101,7 +127,10 @@ function loadFlowsFolder(): Flow[] {
         const nameFromFile = fileName.replace(/\.csv$/i, "");
         try {
           const parsed = parseCsvToFlows(text, nameFromFile);
-          for (const f of parsed) f.source = `flows/${relSegments.join("/")}`;
+          for (const f of parsed) {
+            f.source = `flows/${relSegments.join("/")}`;
+            f.imagesByKey = images.get(folderKey);
+          }
           flows.push(...parsed);
         } catch (err) {
           console.warn(`[flows] skipped ${fileName}: ${(err as Error).message}`);
@@ -127,6 +156,7 @@ function loadFlowsFolder(): Flow[] {
 
     const merged = mergeFlowParts(flowName, parts);
     merged.group = group;
+    merged.imagesByKey = images.get(folderKey);
     merged.source =
       parts.length > 1
         ? `flows/${folderKey} · ${parts.length} files merged`

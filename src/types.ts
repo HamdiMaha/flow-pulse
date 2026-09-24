@@ -14,11 +14,6 @@ export interface FlowResult {
   /** Any CSV columns that aren't one of the mapped fields, keyed by their
    *  original header. Shown as extra table columns. */
   extra?: Record<string, string>;
-  /** Every raw cell value in this row, in original CSV column order,
-   *  sanitized and underscore-joined — used to match this row to an
-   *  uploaded screenshot file named after its full column values (see
-   *  Flow.imagesByKey). Undefined for generated sample data. */
-  imageKey?: string;
 }
 
 export interface Flow {
@@ -34,10 +29,6 @@ export interface Flow {
   group?: string;
   /** Original headers of the unmapped CSV columns, in file order. */
   extraColumns?: string[];
-  /** Image files found alongside this flow's CSVs (same folder), keyed by
-   *  their sanitized filename (no extension) -> a usable <img src> URL.
-   *  Matched against FlowResult.imageKey to show a row's screenshot. */
-  imagesByKey?: Record<string, string>;
   /** Which of the fixed columns actually exist in the source — date and
    *  status are always required so always present. Undefined (e.g. the
    *  generated sample flows) means "all present". Drives which columns

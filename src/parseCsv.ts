@@ -150,18 +150,6 @@ export function slug(name: string): string {
   );
 }
 
-/** Lowercase, alnum-only, underscore-separated — used both for a row's
- *  imageKey (built from its raw cell values) and for matching an uploaded
- *  screenshot's filename against it, so filename casing/spacing/punctuation
- *  differences don't break the match. */
-export function sanitizeKey(v: string): string {
-  return v
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
 /**
  * @param fileDate When the file itself is named after the day it ran (see
  *   flows/README.md — daily exports named `YYYY-MM-DD.csv`), this is that
@@ -293,14 +281,6 @@ export function parseCsvToFlows(
       extra[rawHeader[i] || `column ${i + 1}`] = (cells[i] ?? "").trim();
     }
 
-    // The team names screenshot files after every column value in the row
-    // (its own convention, so it stays unique) — build the same key here,
-    // from the raw cells in original file order, to match against later.
-    const imageKey = cells
-      .map((c) => sanitizeKey(c ?? ""))
-      .filter(Boolean)
-      .join("_");
-
     results.push({
       id: (iId >= 0 && cells[iId]) || `ROW-${r}`,
       date: fileDate ?? normDate(cells[iDate] ?? ""),
@@ -310,7 +290,6 @@ export function parseCsvToFlows(
       jira: iJira >= 0 && cells[iJira] ? cells[iJira] : null,
       note: iNote >= 0 ? cells[iNote] ?? "" : "",
       extra: extraColumns.length ? extra : undefined,
-      imageKey,
     });
   }
 

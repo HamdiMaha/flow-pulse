@@ -12,7 +12,6 @@ import {
   toCsv,
 } from "./lib";
 import { buildInsights, computeTileLifecycle } from "./insights";
-import { getDrillColumns, saveDrillColumns } from "./drillConfig";
 import { FlowPicker } from "./components/FlowPicker";
 import { Timeframe } from "./components/Timeframe";
 import { StatTiles } from "./components/StatTiles";
@@ -21,8 +20,6 @@ import { Insights } from "./components/Insights";
 import { AiSummary } from "./components/AiSummary";
 import { Breakdown } from "./components/Breakdown";
 import { ResultsTable } from "./components/ResultsTable";
-import { DrillDownConfig } from "./components/DrillDownConfig";
-import { DrillDown } from "./components/DrillDown";
 
 // Rendered only for the brief window before loadFlows() resolves — keeps
 // every hook below unconditional (Rules of Hooks) instead of needing a
@@ -46,7 +43,6 @@ export function App() {
   );
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<TableFilter>("all");
-  const [drillColumns, setDrillColumnsState] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,17 +74,6 @@ export function App() {
     () => flows.find((f) => f.id === flowId) ?? flows[0] ?? EMPTY_FLOW,
     [flows, flowId]
   );
-
-  // Drill-down columns are configured per bucket (flow.group), not per
-  // flow — reload whenever the current flow's bucket changes.
-  useEffect(() => {
-    setDrillColumnsState(getDrillColumns(flow.group));
-  }, [flow.group]);
-
-  const handleDrillColumnsChange = (cols: string[]) => {
-    setDrillColumnsState(cols);
-    if (flow.group) saveDrillColumns(flow.group, cols);
-  };
 
   const range = preset === "custom" ? customRange : rangeForPreset(preset);
 
@@ -177,34 +162,22 @@ export function App() {
 
         <Breakdown flow={flow} results={inRange} onPick={handleBreakdownPick} />
 
-        {flow.group && (
-          <DrillDownConfig
-            flow={flow}
-            columns={drillColumns}
-            onChange={handleDrillColumnsChange}
-          />
-        )}
-
-        {flow.group && drillColumns.length > 0 ? (
-          <DrillDown flow={flow} results={inRange} columns={drillColumns} />
-        ) : (
-          <ResultsTable
-            results={inRange}
-            insights={insights}
-            extraColumns={flow.extraColumns}
-            presentColumns={flow.presentColumns}
-            filter={filter}
-            onFilterChange={setFilter}
-            query={query}
-            onQueryChange={setQuery}
-            onExport={(rows) =>
-              downloadCsv(
-                `${flow.id}_${range.start}_${range.end}.csv`,
-                toCsv(rows, flow.name)
-              )
-            }
-          />
-        )}
+        <ResultsTable
+          results={inRange}
+          insights={insights}
+          extraColumns={flow.extraColumns}
+          presentColumns={flow.presentColumns}
+          filter={filter}
+          onFilterChange={setFilter}
+          query={query}
+          onQueryChange={setQuery}
+          onExport={(rows) =>
+            downloadCsv(
+              `${flow.id}_${range.start}_${range.end}.csv`,
+              toCsv(rows, flow.name)
+            )
+          }
+        />
       </section>
 
       <footer className="page-foot">

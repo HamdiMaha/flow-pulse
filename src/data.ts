@@ -57,15 +57,19 @@ function relSegmentsOf(path: string): string[] {
   return flowsIdx >= 0 ? segments.slice(flowsIdx + 1) : segments;
 }
 
-/** A daily export named exactly `YYYY-MM-DD.csv` (the convention this
- *  project's README asks for) is treated as authoritative for its rows'
- *  test date — several teams' own `date` column turns out to be a
- *  plan/config date, not when the test actually ran, so the filename is
- *  the one thing we can trust. Anything else (e.g. a legacy single-file
- *  flow like "PT5282.csv") falls back to the CSV's own date column. */
+/** A daily export named after the day it ran — `YYYY-MM-DD.csv` or
+ *  `YYYYMMDD.csv` — is treated as authoritative for its rows' test date.
+ *  Several teams' own `date` column turns out to be a plan/pricing date,
+ *  not when the test actually ran, so the filename is the one thing we
+ *  can trust. Anything else (e.g. a legacy single-file flow like
+ *  "PT5282.csv") falls back to the CSV's own date column. */
 function dateFromFileName(fileName: string): string | undefined {
   const base = fileName.replace(/\.csv$/i, "");
-  return /^\d{4}-\d{2}-\d{2}$/.test(base) ? base : undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(base)) return base;
+  if (/^\d{8}$/.test(base)) {
+    return `${base.slice(0, 4)}-${base.slice(4, 6)}-${base.slice(6, 8)}`;
+  }
+  return undefined;
 }
 
 /** Combine same-folder file parts into one Flow. Single-file folders

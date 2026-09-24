@@ -33,11 +33,12 @@ machine-specific pointer, not real content to commit.
 
 ## Test date vs. the file's own `date` column
 
-**If a daily file is named exactly `YYYY-MM-DD.csv`** (as this whole setup
-already asks for — see below), that filename is what the dashboard uses as
-every one of its rows' test date. The CSV's own `date`/`run_date`/etc.
-column, if it has one, is **not** used for that — it's kept and shown as a
-regular extra column labeled `<original header> (original)` instead.
+**If a daily file is named after the day it ran** — `YYYY-MM-DD.csv` (e.g.
+`2026-09-18.csv`) or `YYYYMMDD.csv` (e.g. `20260918.csv`) — that filename is
+what the dashboard uses as every one of its rows' test date. The CSV's own
+`date`/`run_date`/etc. column, if it has one, is **not** used for that —
+it's kept and shown as a regular extra column labeled
+`<original header> (original)` instead.
 
 This exists because in real exports, that column is sometimes something
 else entirely (a plan date, a config date) rather than when the test

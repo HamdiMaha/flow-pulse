@@ -89,11 +89,13 @@ export function CombinationsSummary({
   ];
 
   const [selections, setSelections] = useState<string[]>([]);
+  const [successRateFilter, setSuccessRateFilter] = useState("");
   const [summaryPick, setSummaryPick] = useState<Record<string, string> | null>(null);
   const [detailPick, setDetailPick] = useState<FlowResult | null>(null);
 
   useEffect(() => {
     setSelections([]);
+    setSuccessRateFilter("");
     setSummaryPick(null);
     setDetailPick(null);
   }, [flow.id]);
@@ -106,6 +108,7 @@ export function CombinationsSummary({
       if (v) next[i] = v;
       return next;
     });
+    setSuccessRateFilter("");
     setSummaryPick(null);
     setDetailPick(null);
   };
@@ -152,6 +155,20 @@ export function CombinationsSummary({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scoped]);
 
+  // Success Rate isn't a raw column — it's computed per combination, so
+  // its dropdown lists whatever rates actually show up in the summary
+  // table right now (after the other four filters), not a cascading
+  // per-row value like the others.
+  const successRateOptions = useMemo(
+    () =>
+      [...new Set(summaryRows.map((r) => Math.round(r.passRate)))].sort((a, b) => a - b),
+    [summaryRows]
+  );
+
+  const filteredSummaryRows = successRateFilter
+    ? summaryRows.filter((r) => String(Math.round(r.passRate)) === successRateFilter)
+    : summaryRows;
+
   const detailRows = useMemo(() => {
     if (!summaryPick) return [];
     return scoped.filter((r) =>
@@ -194,6 +211,25 @@ export function CombinationsSummary({
             </select>
           </div>
         ))}
+        <div className="drill-filter">
+          <label htmlFor="combo-success-rate">Success Rate</label>
+          <select
+            id="combo-success-rate"
+            value={successRateFilter}
+            onChange={(e) => {
+              setSuccessRateFilter(e.target.value);
+              setSummaryPick(null);
+              setDetailPick(null);
+            }}
+          >
+            <option value="">All</option>
+            {successRateOptions.map((v) => (
+              <option key={v} value={v}>
+                {v}%
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="table-wrap">
@@ -207,7 +243,7 @@ export function CombinationsSummary({
             </tr>
           </thead>
           <tbody>
-            {summaryRows.map((row) => {
+            {filteredSummaryRows.map((row) => {
               const key = FIELDS.map((f) => row.values[f.label]).join(KEY_SEP);
               const isActive =
                 !!summaryPick && FIELDS.every((f) => summaryPick[f.label] === row.values[f.label]);
@@ -229,7 +265,7 @@ export function CombinationsSummary({
                 </tr>
               );
             })}
-            {summaryRows.length === 0 && (
+            {filteredSummaryRows.length === 0 && (
               <tr>
                 <td colSpan={FIELDS.length + 1} className="empty">
                   No results match these filters.

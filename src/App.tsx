@@ -104,9 +104,13 @@ export function App() {
 
   // AGA gets the Combinations Summary view instead of the plain table —
   // hardcoded to that bucket for now, and only when its columns are
-  // actually there (falls back to the plain table otherwise).
-  const comboColumns =
-    flow.group?.toLowerCase() === "aga" ? resolveComboColumns(flow) : null;
+  // actually there (falls back to the plain table otherwise). AGA can be
+  // either a bucket wrapping flows (flow.group) or, when its daily files
+  // sit directly in an "AGA" folder with no per-flow subfolder, the flow's
+  // own name (see flows/README.md's "Add a Line" example — same rule).
+  const isAga =
+    flow.group?.toLowerCase() === "aga" || flow.name.toLowerCase() === "aga";
+  const comboColumns = isAga ? resolveComboColumns(flow) : null;
 
   if (!loaded) {
     return (

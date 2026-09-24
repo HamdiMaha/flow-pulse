@@ -166,6 +166,27 @@ is written back out by Export CSV. So a file with `environment`, `browser`,
 | **failed**  | `failed`, `fail`, `failure`, `error`, `red`, `false`, `no`, `n`, `0`, `nok`, `ko`, `mismatch`, `no match`, `not equal`, `different`, `diff` |
 | **ignored** | `ignored`, `ignore`, `skip`, `skipped`, `muted`, `n/a`, `na`, `unknown`, and anything unrecognised |
 
+## Combinations Summary screenshots (AGA only)
+
+The **AGA** bucket specifically gets a different view — "Combinations
+Summary" — instead of the plain Results Table, with cascading filters over
+Entrypoint / Line Calculator / Plan / Region. Picking a row's detail row
+there looks for a matching screenshot.
+
+Drop the image in the **same folder as that day's `.xlsx` file**. Name it
+after the value in that row's **`Unnamed: 0`** column (the stray unlabeled
+index column that shows up when Excel files are exported from pandas
+without `index=False`) — e.g. if that column's value is `42`, the image is:
+
+```
+42.png
+```
+
+`.png`, `.jpg`, and `.jpeg` are all recognized; matching ignores case. If
+AGA's export doesn't have an `Unnamed: 0` column, or doesn't have
+Entrypoint/Line Calculator/Plan/Region, it falls back to the plain Results
+Table.
+
 ## Example
 
 First sheet of the workbook:

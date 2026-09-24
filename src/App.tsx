@@ -20,6 +20,7 @@ import { Insights } from "./components/Insights";
 import { AiSummary } from "./components/AiSummary";
 import { Breakdown } from "./components/Breakdown";
 import { ResultsTable } from "./components/ResultsTable";
+import { CombinationsSummary, resolveComboColumns } from "./components/CombinationsSummary";
 
 // Rendered only for the brief window before loadFlows() resolves — keeps
 // every hook below unconditional (Rules of Hooks) instead of needing a
@@ -101,6 +102,12 @@ export function App() {
     if (p === "custom") setCustomRange(range);
   };
 
+  // AGA gets the Combinations Summary view instead of the plain table —
+  // hardcoded to that bucket for now, and only when its columns are
+  // actually there (falls back to the plain table otherwise).
+  const comboColumns =
+    flow.group?.toLowerCase() === "aga" ? resolveComboColumns(flow) : null;
+
   if (!loaded) {
     return (
       <div className="app">
@@ -162,22 +169,26 @@ export function App() {
 
         <Breakdown flow={flow} results={inRange} onPick={handleBreakdownPick} />
 
-        <ResultsTable
-          results={inRange}
-          insights={insights}
-          extraColumns={flow.extraColumns}
-          presentColumns={flow.presentColumns}
-          filter={filter}
-          onFilterChange={setFilter}
-          query={query}
-          onQueryChange={setQuery}
-          onExport={(rows) =>
-            downloadCsv(
-              `${flow.id}_${range.start}_${range.end}.csv`,
-              toCsv(rows, flow.name)
-            )
-          }
-        />
+        {comboColumns ? (
+          <CombinationsSummary flow={flow} results={inRange} columns={comboColumns} />
+        ) : (
+          <ResultsTable
+            results={inRange}
+            insights={insights}
+            extraColumns={flow.extraColumns}
+            presentColumns={flow.presentColumns}
+            filter={filter}
+            onFilterChange={setFilter}
+            query={query}
+            onQueryChange={setQuery}
+            onExport={(rows) =>
+              downloadCsv(
+                `${flow.id}_${range.start}_${range.end}.csv`,
+                toCsv(rows, flow.name)
+              )
+            }
+          />
+        )}
       </section>
 
       <footer className="page-foot">

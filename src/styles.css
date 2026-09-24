@@ -745,6 +745,83 @@ td {
   cursor: pointer;
 }
 
+.combo {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.combo-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.drill-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.drill-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drill-filter label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.drill-filter select {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  min-width: 160px;
+}
+
+.drill-row {
+  cursor: pointer;
+}
+
+.drill-row:hover {
+  background: var(--surface-sunken);
+}
+
+.drill-row.active {
+  background: var(--info-bg);
+}
+
+.drill-detail {
+  margin-top: 18px;
+}
+
+.drill-image {
+  margin-top: 18px;
+  padding: 14px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius);
+}
+
+.drill-image img {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+.drill-image-empty {
+  color: var(--ink-faint);
+  margin: 0;
+}
+
 .page-foot {
   margin-top: 24px;
   color: var(--ink-faint);

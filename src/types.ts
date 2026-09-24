@@ -29,6 +29,11 @@ export interface Flow {
   group?: string;
   /** Original headers of the unmapped CSV columns, in file order. */
   extraColumns?: string[];
+  /** Image files found alongside this flow's Excel files (same folder),
+   *  keyed by their sanitized filename (no extension) -> a usable
+   *  <img src> URL. Matched against a row's "Unnamed: 0" column value
+   *  for the AGA Combinations Summary view. */
+  imagesByKey?: Record<string, string>;
   /** Which of the fixed columns actually exist in the source — date and
    *  status are always required so always present. Undefined (e.g. the
    *  generated sample flows) means "all present". Drives which columns

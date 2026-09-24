@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import type { Flow } from "./types";
 import { parseCsvToFlows, slug } from "./parseCsv";
+import { sanitizeKey } from "./lib";
 import { SAMPLE_FLOWS } from "./sampleData";
 
 /* ------------------------------------------------------------------ *
@@ -47,6 +48,14 @@ const xlsxFiles = import.meta.glob("../flows/**/*.xlsx", {
   import: "default",
   eager: true,
 }) as Record<string, string>;
+
+// Screenshots the team drops alongside a flow's Excel files, named after
+// the row's "Unnamed: 0" column value (see components/CombinationsSummary)
+// — read as URLs (not raw text) so they can go straight into an <img src>.
+const imageFiles = import.meta.glob(
+  "../flows/**/*.{png,jpg,jpeg,PNG,JPG,JPEG}",
+  { query: "?url", import: "default", eager: true }
+) as Record<string, string>;
 
 /** Everything after the "flows" path segment, e.g.
  *  ["sharepoint", "Tiles", "PT-4586", "2026-09-01.xlsx"]. */
@@ -99,6 +108,22 @@ function mergeFlowParts(name: string, parts: Flow[]): Flow {
   };
 }
 
+/** Every image found under flows/, grouped by its containing folder and
+ *  keyed within that folder by its sanitized filename (no extension). */
+function imagesByFolder(): Map<string, Record<string, string>> {
+  const map = new Map<string, Record<string, string>>();
+  for (const [path, url] of Object.entries(imageFiles)) {
+    const relSegments = relSegmentsOf(path);
+    const folderKey = relSegments.slice(0, -1).join("/");
+    const fileName = relSegments[relSegments.length - 1];
+    const key = sanitizeKey(fileName.replace(/\.[a-zA-Z]+$/, ""));
+    const rec = map.get(folderKey) ?? {};
+    rec[key] = url;
+    map.set(folderKey, rec);
+  }
+  return map;
+}
+
 /** Fetch a workbook and convert its first sheet to CSV text, so the rest
  *  of the pipeline (parseCsv.ts) doesn't need to know xlsx exists. */
 async function readFirstSheetAsCsv(url: string): Promise<string> {
@@ -109,6 +134,8 @@ async function readFirstSheetAsCsv(url: string): Promise<string> {
 }
 
 async function loadFlowsFolder(): Promise<Flow[]> {
+  const images = imagesByFolder();
+
   // Group every file by its immediate containing folder first — everyone
   // in the same folder is the same flow. Reading is async (fetch + parse
   // the workbook), so resolve them all up front.
@@ -141,6 +168,7 @@ async function loadFlowsFolder(): Promise<Flow[]> {
           const parsed = parseCsvToFlows(text, nameFromFile, dateFromFileName(fileName));
           for (const f of parsed) {
             f.source = `flows/${relSegments.join("/")}`;
+            f.imagesByKey = images.get(folderKey);
           }
           flows.push(...parsed);
         } catch (err) {
@@ -168,6 +196,7 @@ async function loadFlowsFolder(): Promise<Flow[]> {
 
     const merged = mergeFlowParts(flowName, parts);
     merged.group = group;
+    merged.imagesByKey = images.get(folderKey);
     merged.source =
       parts.length > 1
         ? `flows/${folderKey} · ${parts.length} files merged`

@@ -13,6 +13,17 @@ export function toISO(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Lowercase, alnum-only, underscore-separated — used to match an uploaded
+ *  screenshot's filename against a row's identifying column value, so
+ *  filename casing/spacing/punctuation differences don't break the match. */
+export function sanitizeKey(v: string): string {
+  return v
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 function today(): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);

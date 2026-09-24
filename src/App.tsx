@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { FLOWS, USING_SAMPLE } from "./data";
-import type { DateRange, TableFilter, TimeframePreset } from "./types";
+import { loadFlows } from "./data";
+import type { DateRange, Flow, TableFilter, TimeframePreset } from "./types";
 import {
   buildAiSummary,
   computeStats,
@@ -24,8 +24,22 @@ import { ResultsTable } from "./components/ResultsTable";
 import { DrillDownConfig } from "./components/DrillDownConfig";
 import { DrillDown } from "./components/DrillDown";
 
+// Rendered only for the brief window before loadFlows() resolves — keeps
+// every hook below unconditional (Rules of Hooks) instead of needing a
+// real flow's worth of data to exist yet.
+const EMPTY_FLOW: Flow = {
+  id: "__loading__",
+  name: "Loading…",
+  source: "",
+  categories: [],
+  results: [],
+};
+
 export function App() {
-  const [flowId, setFlowId] = useState(FLOWS[0].id);
+  const [flows, setFlows] = useState<Flow[]>([]);
+  const [usingSample, setUsingSample] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [flowId, setFlowId] = useState<string>("");
   const [preset, setPreset] = useState<TimeframePreset>("30d");
   const [customRange, setCustomRange] = useState<DateRange>(
     rangeForPreset("30d")
@@ -33,6 +47,20 @@ export function App() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<TableFilter>("all");
   const [drillColumns, setDrillColumnsState] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadFlows().then((result) => {
+      if (cancelled) return;
+      setFlows(result.flows);
+      setUsingSample(result.usingSample);
+      setFlowId(result.flows[0]?.id ?? "");
+      setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSelectFlow = (id: string) => {
     setFlowId(id);
@@ -47,8 +75,8 @@ export function App() {
   };
 
   const flow = useMemo(
-    () => FLOWS.find((f) => f.id === flowId) ?? FLOWS[0],
-    [flowId]
+    () => flows.find((f) => f.id === flowId) ?? flows[0] ?? EMPTY_FLOW,
+    [flows, flowId]
   );
 
   // Drill-down columns are configured per bucket (flow.group), not per
@@ -88,6 +116,14 @@ export function App() {
     if (p === "custom") setCustomRange(range);
   };
 
+  if (!loaded) {
+    return (
+      <div className="app">
+        <p className="app-loading">Reading flows…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header className="page-head">
@@ -99,13 +135,13 @@ export function App() {
           </p>
         </div>
         <span className="preview-badge">
-          {USING_SAMPLE
-            ? "Sample data — add CSVs to /flows"
-            : `Reading ${FLOWS.length} flow${FLOWS.length === 1 ? "" : "s"} from /flows`}
+          {usingSample
+            ? "Sample data — add .xlsx files to /flows"
+            : `Reading ${flows.length} flow${flows.length === 1 ? "" : "s"} from /flows`}
         </span>
       </header>
 
-      <FlowPicker flows={FLOWS} flowId={flowId} onSelect={handleSelectFlow} />
+      <FlowPicker flows={flows} flowId={flowId} onSelect={handleSelectFlow} />
 
       <section className="card">
         <div className="card-head">

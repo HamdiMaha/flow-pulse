@@ -1,3 +1,4 @@
+import * as XLSX from "xlsx";
 import type { Flow } from "./types";
 import { parseCsvToFlows, sanitizeKey, slug } from "./parseCsv";
 import { SAMPLE_FLOWS } from "./sampleData";
@@ -5,43 +6,49 @@ import { SAMPLE_FLOWS } from "./sampleData";
 /* ------------------------------------------------------------------ *
  * Data source.
  *
- * Every *.csv file anywhere under the project's /flows folder (including
- * subfolders) is read at build / dev-server time and turned into a Flow.
+ * Every *.xlsx file anywhere under the project's /flows folder (including
+ * subfolders) is read at dev-server/runtime and turned into a Flow. Each
+ * workbook's first sheet is converted to CSV text and run through the
+ * exact same parser as before (parseCsv.ts) — xlsx is just a different
+ * container for the same row shape.
  *
- * A flow = every CSV file sitting DIRECTLY in the same folder, merged
- * into one — that's what lets a daily/periodic export (a new file
- * dropped in each day) accumulate into one continuous flow instead of
- * becoming a new flow every time. The folder's name is the flow's name.
- * A folder holding just one file behaves exactly like before: that file
- * is its own flow, named after the file.
+ * A flow = every file sitting DIRECTLY in the same folder, merged into
+ * one — that's what lets a daily/periodic export (a new file dropped in
+ * each day) accumulate into one continuous flow instead of becoming a
+ * new flow every time. The folder's name is the flow's name. A folder
+ * holding just one file behaves exactly like before: that file is its
+ * own flow, named after the file.
  *
  * The bucket (Flow.group) shown in the picker is the folder ONE level
  * above the flow's folder — e.g.:
  *
- *   flows/sharepoint/Tiles/PT-4586/2026-09-01.csv   -> flow "PT-4586", bucket "Tiles"
- *   flows/sharepoint/Add a Line/2026-09-17.csv       -> flow "Add a Line", no bucket
+ *   flows/sharepoint/Tiles/PT-4586/2026-09-01.xlsx   -> flow "PT-4586", bucket "Tiles"
+ *   flows/sharepoint/Add a Line/2026-09-17.xlsx       -> flow "Add a Line", no bucket
  *                                                        ("sharepoint" is our own
  *                                                        junction mount-point name,
  *                                                        not a real bucket)
- *   flows/Login Journey.csv                          -> flow "Login Journey", no bucket
+ *   flows/Login Journey.xlsx                          -> flow "Login Journey", no bucket
  *
  * Scanning subfolders is what lets a SharePoint document library that's
  * synced locally via OneDrive be used as a source: create a subfolder
  * under /flows that's a directory junction pointing at the synced
- * SharePoint folder (see flows/README.md), and its CSVs are picked up
+ * SharePoint folder (see flows/README.md), and its files are picked up
  * the same as any other file here.
  *
- * If /flows has no usable CSV, the dashboard falls back to the
+ * If /flows has no usable .xlsx, the dashboard falls back to the
  * generated SAMPLE_FLOWS so it still renders.
  * ------------------------------------------------------------------ */
 
-const csvFiles = import.meta.glob("../flows/**/*.csv", {
-  query: "?raw",
+// Eagerly resolved to URLs (cheap, synchronous) — the actual file bytes
+// are only fetched once loadFlows() is called, since reading a workbook
+// is inherently async (fetch + parse).
+const xlsxFiles = import.meta.glob("../flows/**/*.xlsx", {
+  query: "?url",
   import: "default",
   eager: true,
 }) as Record<string, string>;
 
-// Screenshots the team drops alongside a flow's CSVs, named after every
+// Screenshots the team drops alongside a flow's files, named after every
 // column value of the row they belong to (see parseCsv's imageKey) — read
 // as URLs (not raw text) so they can go straight into an <img src>.
 const imageFiles = import.meta.glob(
@@ -50,21 +57,21 @@ const imageFiles = import.meta.glob(
 ) as Record<string, string>;
 
 /** Everything after the "flows" path segment, e.g.
- *  ["sharepoint", "Tiles", "PT-4586", "2026-09-01.csv"]. */
+ *  ["sharepoint", "Tiles", "PT-4586", "2026-09-01.xlsx"]. */
 function relSegmentsOf(path: string): string[] {
   const segments = path.split("/");
   const flowsIdx = segments.lastIndexOf("flows");
   return flowsIdx >= 0 ? segments.slice(flowsIdx + 1) : segments;
 }
 
-/** A daily export named after the day it ran — `YYYY-MM-DD.csv` or
- *  `YYYYMMDD.csv` — is treated as authoritative for its rows' test date.
+/** A daily export named after the day it ran — `YYYY-MM-DD.xlsx` or
+ *  `YYYYMMDD.xlsx` — is treated as authoritative for its rows' test date.
  *  Several teams' own `date` column turns out to be a plan/pricing date,
  *  not when the test actually ran, so the filename is the one thing we
  *  can trust. Anything else (e.g. a legacy single-file flow like
- *  "PT5282.csv") falls back to the CSV's own date column. */
+ *  "PT5282.xlsx") falls back to the sheet's own date column. */
 function dateFromFileName(fileName: string): string | undefined {
-  const base = fileName.replace(/\.csv$/i, "");
+  const base = fileName.replace(/\.xlsx$/i, "");
   if (/^\d{4}-\d{2}-\d{2}$/.test(base)) return base;
   if (/^\d{8}$/.test(base)) {
     return `${base.slice(0, 4)}-${base.slice(4, 6)}-${base.slice(6, 8)}`;
@@ -116,17 +123,33 @@ function imagesByFolder(): Map<string, Record<string, string>> {
   return map;
 }
 
-function loadFlowsFolder(): Flow[] {
+/** Fetch a workbook and convert its first sheet to CSV text, so the rest
+ *  of the pipeline (parseCsv.ts) doesn't need to know xlsx exists. */
+async function readFirstSheetAsCsv(url: string): Promise<string> {
+  const buf = await fetch(url).then((r) => r.arrayBuffer());
+  const workbook = XLSX.read(buf, { type: "array" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  return XLSX.utils.sheet_to_csv(sheet);
+}
+
+async function loadFlowsFolder(): Promise<Flow[]> {
   const images = imagesByFolder();
 
-  // Group every CSV by its immediate containing folder first — everyone
-  // in the same folder is the same flow.
+  // Group every file by its immediate containing folder first — everyone
+  // in the same folder is the same flow. Reading is async (fetch + parse
+  // the workbook), so resolve them all up front.
+  const read = await Promise.all(
+    Object.entries(xlsxFiles).map(async ([path, url]) => ({
+      relSegments: relSegmentsOf(path),
+      text: await readFirstSheetAsCsv(url),
+    }))
+  );
+
   const byFolder = new Map<string, { relSegments: string[]; text: string }[]>();
-  for (const [path, text] of Object.entries(csvFiles)) {
-    const relSegments = relSegmentsOf(path);
-    const folderKey = relSegments.slice(0, -1).join("/"); // "" = directly in flows/
+  for (const entry of read) {
+    const folderKey = entry.relSegments.slice(0, -1).join("/"); // "" = directly in flows/
     const list = byFolder.get(folderKey) ?? [];
-    list.push({ relSegments, text });
+    list.push(entry);
     byFolder.set(folderKey, list);
   }
 
@@ -139,7 +162,7 @@ function loadFlowsFolder(): Flow[] {
       // Loose file directly in flows/ — its own flow, no bucket.
       for (const { relSegments, text } of files) {
         const fileName = relSegments[relSegments.length - 1];
-        const nameFromFile = fileName.replace(/\.csv$/i, "");
+        const nameFromFile = fileName.replace(/\.xlsx$/i, "");
         try {
           const parsed = parseCsvToFlows(text, nameFromFile, dateFromFileName(fileName));
           for (const f of parsed) {
@@ -184,8 +207,22 @@ function loadFlowsFolder(): Flow[] {
   return flows;
 }
 
-const loaded = loadFlowsFolder();
+export interface LoadedFlows {
+  flows: Flow[];
+  usingSample: boolean;
+}
 
-export const USING_SAMPLE = loaded.length === 0;
+let cached: Promise<LoadedFlows> | null = null;
 
-export const FLOWS: Flow[] = USING_SAMPLE ? SAMPLE_FLOWS : loaded;
+/** Reads every .xlsx under flows/ once and caches the result — call this
+ *  from App on mount rather than importing a top-level constant, since
+ *  reading a workbook is inherently async. */
+export function loadFlows(): Promise<LoadedFlows> {
+  if (!cached) {
+    cached = loadFlowsFolder().then((loaded) => {
+      const usingSample = loaded.length === 0;
+      return { flows: usingSample ? SAMPLE_FLOWS : loaded, usingSample };
+    });
+  }
+  return cached;
+}

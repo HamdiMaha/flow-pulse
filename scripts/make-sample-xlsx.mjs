@@ -1,6 +1,8 @@
-// Writes example CSVs into /flows so the dashboard has something to show.
-// One file per flow. Run: node scripts/make-sample-csv.mjs
-import { writeFileSync, mkdirSync } from "node:fs";
+// Writes example .xlsx files into /flows so the dashboard has something
+// to show. One file per flow. Run: node scripts/make-sample-xlsx.mjs
+import { mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import * as XLSX from "xlsx";
 
 const FLOWS = [
   {
@@ -28,7 +30,6 @@ const NOTES = {
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const pad = (n) => String(n).padStart(2, "0");
-const esc = (v) => `"${String(v).replace(/"/g, '""')}"`;
 
 const outDir = new URL("../flows/", import.meta.url);
 mkdirSync(outDir, { recursive: true });
@@ -71,7 +72,9 @@ for (const flow of FLOWS) {
       ]);
     }
   }
-  const csv = rows.map((r) => r.map(esc).join(",")).join("\n");
-  writeFileSync(new URL(`${flow.name}.csv`, outDir), csv);
-  console.log(`wrote flows/${flow.name}.csv (${rows.length - 1} rows)`);
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, "Results");
+  XLSX.writeFile(workbook, fileURLToPath(new URL(`${flow.name}.xlsx`, outDir)));
+  console.log(`wrote flows/${flow.name}.xlsx (${rows.length - 1} rows)`);
 }

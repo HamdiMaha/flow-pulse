@@ -15,7 +15,7 @@ npm run build    # type-check + production build to dist/
 
 | Area | Behaviour |
 | --- | --- |
-| **Flow picker** | Switch between flows; count in parens is lifetime result volume. A flow = every CSV in one folder merged together (drop in a new daily export and it joins the same flow, filtered by whatever Timeframe you pick — see `flows/README.md`). Flows can be grouped into buckets (the folder one level above), shown as chips, or a compact dropdown past 6 buckets. |
+| **Flow picker** | Switch between flows; count in parens is lifetime result volume. A flow = every `.xlsx` file in one folder merged together (drop in a new daily export and it joins the same flow, filtered by whatever Timeframe you pick — see `flows/README.md`). Flows can be grouped into buckets (the folder one level above), shown as chips, or a compact dropdown past 6 buckets. |
 | **Timeframe** | `Today / 7 / 30 / 90 days` presets, or `Custom` with two date pickers. |
 | **Pass rate** | `passed / (passed + failed)` — ignored results are excluded. |
 | **Stat tiles** | Passed / Failed / Ignored counts for the window. |
@@ -23,7 +23,7 @@ npm run build    # type-check + production build to dist/
 | **Insights** | A tester's actual to-do list, not just totals: **New failures** (failing today, wasn't failing before) and **Flaky** (genuine pass↔fail oscillation, 2+ transitions — distinct from a fresh regression). Needs an id that repeats across dates to mean anything — hidden entirely otherwise (e.g. the sample flows). Click a tile to filter the table; click again to clear. |
 | **Tile lifecycle** | Only for flows with launch/end date columns (e.g. Tiles' `tile_launch_dt`/`tile_end_dt`): counts of Active / Expired / Upcoming, so a failure on an already-expired config doesn't get chased as a live bug. Hidden when the flow has no such columns. |
 | **Pass rate by …** (Breakdown) | Pick any column the flow actually has (Category/Severity, or any extra column like Region, Plan, Province, Offer) and see pass rate + volume per value, worst first — plain numbers, color-coded (red under 90%), no bar chart (a bar scaled to pass rate makes the worst performers the *least* visually prominent, and ignores sample size — rejected on purpose). Click a value to filter the table. Auto-hides columns that are all-unique (ids) or all-identical (no signal), and hides entirely if nothing meaningful to group by. |
-| **Results table** | Fixed columns (Date, Status, ID, Category, Severity, Jira) **plus one column per extra header in the CSV**. Filter tabs — All/Passed/Failed/Ignored plus New/Flaky when trackable — recompute against whatever's currently searched (type "MFA" and the tab counts narrow to just that). Free-text search (incl. extra columns, driven by Breakdown/Insights clicks too), `Export CSV` of the current filter, incremental "show more". NEW/FLAKY badges shown inline per row. Shown for any bucket that doesn't have a drill-down configured (see below). |
+| **Results table** | Fixed columns (Date, Status, ID, Category, Severity, Jira) **plus one column per extra header in the sheet**. Filter tabs — All/Passed/Failed/Ignored plus New/Flaky when trackable — recompute against whatever's currently searched (type "MFA" and the tab counts narrow to just that). Free-text search (incl. extra columns, driven by Breakdown/Insights clicks too), `Export CSV` of the current filter, incremental "show more". NEW/FLAKY badges shown inline per row. Shown for any bucket that doesn't have a drill-down configured (see below). |
 | **Drill-down** | Opt-in, per bucket (e.g. Add a Line, AGA, Tiles each configure their own). "Drill-down columns for …" lets anyone pick which of that bucket's columns to step through and in what order (e.g. Entrypoint → CX Segment → Line Calculator → Plan → Region) — each pick narrows the next one's choices. Once configured, it **replaces** the Results Table for every flow in that bucket with: a summary table (one row per unique combination of the chosen columns, with pass rate + volume, worst first), click a row for a detail table of every raw result behind it, click a result there to show its screenshot if the team uploaded one. Choice is remembered locally (per browser). See `flows/README.md` for the screenshot-naming convention. |
 
 ## AI Summary (Gemini)
@@ -49,32 +49,37 @@ actual backend endpoint.
 
 ## Data
 
-The dashboard reads every `*.csv` file in [`flows/`](flows/) — one file per
-flow, file name = flow name. Save a file, and the dev server reloads with it.
-Empty the folder to fall back to generated sample data. Format and columns are
-documented in [`flows/README.md`](flows/README.md).
+The dashboard reads every `*.xlsx` file in [`flows/`](flows/) — one file per
+flow, file name = flow name (its **first sheet** is what's read; other sheets
+in the same workbook are ignored). Save a file, and the dev server reloads
+with it. Empty the folder to fall back to generated sample data. Format and
+columns are documented in [`flows/README.md`](flows/README.md).
+
+Run `node scripts/make-sample-xlsx.mjs` to regenerate example `.xlsx` files
+in `flows/` if you want something to look at locally.
 
 ```
 flows/
-  Login Journey.csv      example — overwrite with your own
-  Payments Smoke.csv     example
-  README.md              CSV format
+  README.md      column/format docs
 
 src/
-  data.ts        reads flows/*.csv (via import.meta.glob), merges per-folder
-                 daily files into one flow each, else SAMPLE_FLOWS; also
-                 globs screenshot images alongside the CSVs
-  parseCsv.ts    CSV text -> Flow[]; also builds each row's imageKey
+  data.ts        reads flows/*.xlsx (via import.meta.glob, fetched + parsed
+                 async with the xlsx package), merges per-folder daily files
+                 into one flow each, else SAMPLE_FLOWS; also globs screenshot
+                 images alongside the workbooks
+  parseCsv.ts    CSV text -> Flow[] (each workbook's first sheet is converted
+                 to CSV text via XLSX.utils.sheet_to_csv before this runs);
+                 also builds each row's imageKey
   drillConfig.ts per-bucket drill-down column config (localStorage)
   sampleData.ts  seeded generated fallback data
   ai.ts          client for the /api/ai (Gemini) endpoint
   lib.ts         date-range math, stats, rule-based summary, AI context, CSV export
   types.ts       shared types
-  App.tsx        state + layout
+  App.tsx        state + layout; loads flows async on mount via data.ts
   insights.ts    New/Flaky detection, tile lifecycle
   components/    FlowPicker, Timeframe, StatTiles, TileLifecycle, Insights,
                  AiSummary, Breakdown, ResultsTable, DrillDownConfig, DrillDown
 ```
 
-To go live later, replace `src/data.ts` with a fetch to an API that returns the
-same `Flow[]` shape — nothing else changes.
+To go live later, replace `src/data.ts`'s `loadFlows()` with a fetch to an API
+that returns the same `Flow[]` shape — nothing else changes.

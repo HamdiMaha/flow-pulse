@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Flow, FlowResult } from "../types";
+import type { Flow, FlowResult, TableFilter } from "../types";
 import { fmtDay, sanitizeKey } from "../lib";
 
 /* ------------------------------------------------------------------ *
@@ -114,12 +114,14 @@ export function CombinationsSummary({
   const [successRateFilter, setSuccessRateFilter] = useState("");
   const [summaryPick, setSummaryPick] = useState<Record<string, string> | null>(null);
   const [detailPick, setDetailPick] = useState<FlowResult | null>(null);
+  const [statusFilter, setStatusFilter] = useState<TableFilter>("all");
 
   useEffect(() => {
     setSelections([]);
     setSuccessRateFilter("");
     setSummaryPick(null);
     setDetailPick(null);
+    setStatusFilter("all");
   }, [flow.id]);
 
   const setSelectionAt = (i: number, v: string) => {
@@ -194,6 +196,15 @@ export function CombinationsSummary({
     return scoped.filter((r) => fields.every((f) => f.get(r) === summaryPick[f.label]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scoped, summaryPick, config]);
+
+  const visibleDetailRows =
+    statusFilter === "all" ? detailRows : detailRows.filter((r) => r.status === statusFilter);
+  const statusTabs: { key: TableFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "passed", label: "Passed" },
+    { key: "failed", label: "Failed" },
+    { key: "ignored", label: "Ignored" },
+  ];
 
   const showId = flow.presentColumns?.id ?? true;
   const showCategory = flow.presentColumns?.category ?? true;
@@ -272,6 +283,7 @@ export function CombinationsSummary({
                   onClick={() => {
                     setSummaryPick(row.values);
                     setDetailPick(null);
+                    setStatusFilter("all");
                   }}
                 >
                   {fields.map((f) => (
@@ -297,6 +309,25 @@ export function CombinationsSummary({
       {summaryPick && (
         <div className="drill-detail">
           <h3 className="combo-title">Detailed annotations for selected combo</h3>
+          <div className="filter-tabs">
+            {statusTabs.map((t) => (
+              <button
+                key={t.key}
+                className={statusFilter === t.key ? "ftab active" : "ftab"}
+                onClick={() => {
+                  setStatusFilter(t.key);
+                  setDetailPick(null);
+                }}
+              >
+                {t.label}{" "}
+                <span className="ftab-count">
+                  {t.key === "all"
+                    ? detailRows.length
+                    : detailRows.filter((r) => r.status === t.key).length}
+                </span>
+              </button>
+            ))}
+          </div>
           <div className="table-wrap">
             <table>
               <thead>
@@ -313,7 +344,7 @@ export function CombinationsSummary({
                 </tr>
               </thead>
               <tbody>
-                {detailRows.map((r, i) => (
+                {visibleDetailRows.map((r, i) => (
                   <tr
                     key={`${r.id}-${i}`}
                     className={detailPick === r ? "drill-row active" : "drill-row"}
@@ -336,7 +367,7 @@ export function CombinationsSummary({
                     ))}
                   </tr>
                 ))}
-                {detailRows.length === 0 && (
+                {visibleDetailRows.length === 0 && (
                   <tr>
                     <td
                       colSpan={

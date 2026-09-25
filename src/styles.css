@@ -371,52 +371,6 @@ h2 {
   background: var(--info-bg);
 }
 
-/* ---------- insights (tester to-do list) ---------- */
-.insights {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-.insight-tile {
-  flex: 1 1 140px;
-  text-align: left;
-  background: var(--surface-sunken);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  padding: 12px 16px;
-  cursor: pointer;
-  font: inherit;
-  color: var(--ink);
-}
-
-.insight-tile:hover {
-  border-color: var(--border-strong);
-}
-
-.insight-tile.active {
-  border-color: var(--slate);
-  background: var(--surface);
-}
-
-.insight-value {
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.insight-warn .insight-value {
-  color: var(--red);
-}
-
-.insight-label {
-  margin-top: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
 /* ---------- ai summary ---------- */
 .ai-summary {
   background: var(--info-bg);
@@ -704,27 +658,6 @@ td {
 .badge-ignored {
   color: var(--ink-faint);
   background: var(--surface-sunken);
-}
-
-.badge-flag {
-  display: inline-block;
-  margin-left: 6px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  padding: 2px 6px;
-  border-radius: 6px;
-  vertical-align: middle;
-}
-
-.badge-new {
-  color: var(--focus);
-  background: var(--info-bg);
-}
-
-.badge-flaky {
-  color: var(--amber-ink);
-  background: var(--amber-bg);
 }
 
 .empty {

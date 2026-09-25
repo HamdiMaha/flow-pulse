@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Flow, FlowResult, TableFilter } from "../types";
-import type { Insights } from "../insights";
-import { resultKey } from "../insights";
 import { fmtDay } from "../lib";
 
 const PAGE = 60;
@@ -19,7 +17,6 @@ function matchesQuery(r: FlowResult, q: string): boolean {
 
 export function ResultsTable({
   results,
-  insights,
   extraColumns = [],
   presentColumns,
   filter,
@@ -29,10 +26,9 @@ export function ResultsTable({
   onExport,
 }: {
   results: FlowResult[];
-  insights: Insights;
   extraColumns?: string[];
   presentColumns?: Flow["presentColumns"];
-  /** Lifted to App so the Insights panel can drive these too. */
+  /** Lifted to App so a Breakdown click can drive these too. */
   filter: TableFilter;
   onFilterChange: (f: TableFilter) => void;
   query: string;
@@ -42,7 +38,7 @@ export function ResultsTable({
   const [limit, setLimit] = useState(PAGE);
 
   // Reset pagination whenever the query or filter changes, including
-  // externally (an Insights/Breakdown click), not just from the UI here.
+  // externally (a Breakdown click), not just from the UI here.
   useEffect(() => {
     setLimit(PAGE);
   }, [query, filter]);
@@ -66,10 +62,6 @@ export function ResultsTable({
     switch (f) {
       case "all":
         return true;
-      case "new":
-        return insights.newFailureKeys.has(resultKey(r));
-      case "flaky":
-        return insights.flakyIds.has(r.id);
       default:
         return r.status === f;
     }
@@ -78,7 +70,7 @@ export function ResultsTable({
   const filtered = useMemo(
     () => searchFiltered.filter((r) => matchesFilter(r, filter)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [searchFiltered, filter, insights]
+    [searchFiltered, filter]
   );
 
   const shown = filtered.slice(0, limit);
@@ -98,12 +90,6 @@ export function ResultsTable({
     { key: "passed", label: "Passed", count: countFor("passed") },
     { key: "failed", label: "Failed", count: countFor("failed") },
     { key: "ignored", label: "Ignored", count: countFor("ignored") },
-    ...(insights.canTrackIdentity
-      ? ([
-          { key: "new", label: "New", count: countFor("new") },
-          { key: "flaky", label: "Flaky", count: countFor("flaky") },
-        ] as const)
-      : []),
   ];
 
   return (
@@ -160,16 +146,6 @@ export function ResultsTable({
                   <span className={`badge badge-${r.status}`}>
                     {r.status.toUpperCase()}
                   </span>
-                  {insights.canTrackIdentity && insights.newFailureKeys.has(resultKey(r)) && (
-                    <span className="badge-flag badge-new" title="First time this has failed">
-                      NEW
-                    </span>
-                  )}
-                  {insights.canTrackIdentity && insights.flakyIds.has(r.id) && (
-                    <span className="badge-flag badge-flaky" title="Has both passed and failed before — inconsistent">
-                      ⚡ FLAKY
-                    </span>
-                  )}
                 </td>
                 {showId && <td className="c-id">{r.id}</td>}
                 {showCategory && <td>{r.category}</td>}

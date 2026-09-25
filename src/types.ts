@@ -65,7 +65,5 @@ export interface FlowStats {
   passRate: number;
 }
 
-/** The results table's active filter — status tabs plus the derived
- *  tester-facing views (new / flaky). Shared between ResultsTable and
- *  the Insights panel that drives it. */
-export type TableFilter = "all" | ResultStatus | "new" | "flaky";
+/** The results table's active status filter. */
+export type TableFilter = "all" | ResultStatus;

@@ -11,12 +11,11 @@ import {
   resultsInRange,
   toCsv,
 } from "./lib";
-import { buildInsights, computeTileLifecycle } from "./insights";
+import { computeTileLifecycle } from "./insights";
 import { FlowPicker } from "./components/FlowPicker";
 import { Timeframe } from "./components/Timeframe";
 import { StatTiles } from "./components/StatTiles";
 import { TileLifecycle } from "./components/TileLifecycle";
-import { Insights } from "./components/Insights";
 import { AiSummary } from "./components/AiSummary";
 import { Breakdown } from "./components/Breakdown";
 import { ResultsTable } from "./components/ResultsTable";
@@ -91,7 +90,6 @@ export function App() {
     [flow, range, stats, prevStats]
   );
 
-  const insights = useMemo(() => buildInsights(flow, inRange), [flow, inRange]);
   const tileLifecycle = useMemo(
     () => computeTileLifecycle(flow, inRange),
     [flow, inRange]
@@ -156,8 +154,6 @@ export function App() {
 
         <TileLifecycle data={tileLifecycle} />
 
-        <Insights insights={insights} filter={filter} onFilter={setFilter} />
-
         <AiSummary
           summary={summary}
           flow={flow}
@@ -173,7 +169,6 @@ export function App() {
         ) : (
           <ResultsTable
             results={inRange}
-            insights={insights}
             extraColumns={flow.extraColumns}
             presentColumns={flow.presentColumns}
             filter={filter}

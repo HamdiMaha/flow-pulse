@@ -166,26 +166,37 @@ is written back out by Export CSV. So a file with `environment`, `browser`,
 | **failed**  | `failed`, `fail`, `failure`, `error`, `red`, `false`, `no`, `n`, `0`, `nok`, `ko`, `mismatch`, `no match`, `not equal`, `different`, `diff` |
 | **ignored** | `ignored`, `ignore`, `skip`, `skipped`, `muted`, `n/a`, `na`, `unknown`, and anything unrecognised |
 
-## Combinations Summary screenshots (AGA only)
+## Combinations Summary + screenshots (AGA, Add a Line, Tiles)
 
-The **AGA** bucket specifically gets a different view — "Combinations
-Summary" — instead of the plain Results Table, with cascading filters over
-Entrypoint / Line Calculator / Plan / Region. Picking a row's detail row
-there looks for a matching screenshot.
+These three get a "Combinations Summary" view instead of the plain Results
+Table (filters → summary table → "Detailed annotations for selected combo"
+→ screenshot). Which columns it needs:
 
-Drop the image in the **same folder as that day's `.xlsx` file**. Name it
-after the value in that row's **`Unnamed: 0`** column (the stray unlabeled
-index column that shows up when Excel files are exported from pandas
-without `index=False`) — e.g. if that column's value is `42`, the image is:
+| Flow | Filters (columns it looks for) |
+|------|--------------------------------|
+| **AGA** | Entrypoint, Line Calculator, Plan, Region |
+| **Add a Line** | Customer Segment, Region, Lines (Line Calculator), Plan, Step Name |
+| **Tiles** | User ID (`user_id`), Tile ID (`id`), Tile Name (`tile_nm`) — no screenshots; `BUP` and `log_file` are hidden |
+
+Missing a required column → that flow quietly falls back to the plain table.
+
+**Screenshots** go in a `screenshots` folder inside the flow's folder:
 
 ```
-42.png
+flows/sharepoint/AGA/2026-09-24.xlsx
+flows/sharepoint/AGA/screenshots/Cart-PlanA-LC1-Search-Ontario-2026-09-24.png
 ```
 
-`.png`, `.jpg`, and `.jpeg` are all recognized; matching ignores case. If
-AGA's export doesn't have an `Unnamed: 0` column, or doesn't have
-Entrypoint/Line Calculator/Plan/Region, it falls back to the plain Results
-Table.
+File names are built from the row's own values (`page` = the **Step Name**
+column, `lines` = **Line Calculator**, `date` = the row's **test date** from
+the daily file name, written `2026-09-24` or `20260924`):
+
+- **AGA:** `{page}-{plan}-{lines}-{entrypoint}-{region}-{date}`
+- **Add a Line:** `Seg_{segments}_{region}_{lines}L_{plan}_STEP_{page}_{date}`
+
+Matching ignores case and treats `-`, `_` and spaces as the same, but every
+value and its position must match. `.png`, `.jpg`, `.jpeg` work. When a row
+has no screenshot, the dashboard shows the exact file name it expected.
 
 ## Example
 

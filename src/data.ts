@@ -49,9 +49,8 @@ const xlsxFiles = import.meta.glob("../flows/**/*.xlsx", {
   eager: true,
 }) as Record<string, string>;
 
-// Screenshots the team drops alongside a flow's Excel files, named after
-// the row's "Unnamed: 0" column value (see components/CombinationsSummary)
-// — read as URLs (not raw text) so they can go straight into an <img src>.
+// Screenshots the team drops in a flow's screenshots/ folder, named after
+// the row's column values (see components/CombinationsSummary) — read as URLs (not raw text) so they can go straight into an <img src>.
 const imageFiles = import.meta.glob(
   "../flows/**/*.{png,jpg,jpeg,PNG,JPG,JPEG}",
   { query: "?url", import: "default", eager: true }
@@ -114,7 +113,13 @@ function imagesByFolder(): Map<string, Record<string, string>> {
   const map = new Map<string, Record<string, string>>();
   for (const [path, url] of Object.entries(imageFiles)) {
     const relSegments = relSegmentsOf(path);
-    const folderKey = relSegments.slice(0, -1).join("/");
+    const dirSegments = relSegments.slice(0, -1);
+    // Screenshots live in <flow folder>/screenshots/ — attribute them to
+    // the flow folder itself (images sitting next to the .xlsx still work).
+    if (dirSegments[dirSegments.length - 1]?.toLowerCase() === "screenshots") {
+      dirSegments.pop();
+    }
+    const folderKey = dirSegments.join("/");
     const fileName = relSegments[relSegments.length - 1];
     const key = sanitizeKey(fileName.replace(/\.[a-zA-Z]+$/, ""));
     const rec = map.get(folderKey) ?? {};

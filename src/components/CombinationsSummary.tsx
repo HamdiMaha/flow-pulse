@@ -9,9 +9,9 @@ import { fmtDay, sanitizeKey } from "../lib";
  * + success rate), and picking a row reveals "Detailed annotations for
  * selected combo" (every column for the matching raw rows).
  *
- * AGA additionally shows a screenshot when a detail row is picked,
- * matched by the raw value of the sheet's "Unnamed: 0" column (a stray
- * index column common in pandas-exported Excel files).
+ * AGA and AAL (Add a Line) also show a screenshot when a detail row is
+ * picked, found in flows/.../<flow>/screenshots/ by a file name built
+ * from the row's own column values (each bucket has its own pattern).
  * ------------------------------------------------------------------ */
 
 function normalizeHeader(h: string): string {
@@ -33,23 +33,22 @@ export interface ComboField {
 
 export interface ComboConfig {
   fields: ComboField[];
-  /** Column whose value names the row's screenshot; null = no screenshots. */
-  imageColumn: string | null;
-  screenshots: boolean;
+  /** Candidate screenshot file names (no extension) for a row, or null when
+   *  this bucket has no screenshots. First entry is what we tell users to
+   *  name the file. */
+  screenshotNames: ((r: FlowResult) => string[]) | null;
 }
 
 function extraField(label: string, column: string): ComboField {
   return { label, get: (r) => r.extra?.[column] || "(blank)" };
 }
 
-const AGA_FIELDS = [
-  { label: "Entrypoint", aliases: ["entrypoint"] },
-  { label: "Line Calculator", aliases: ["linecalculator", "linecalc"] },
-  { label: "Plan", aliases: ["plan"] },
-  { label: "Region", aliases: ["region"] },
-] as const;
+const val = (r: FlowResult, column: string) => r.extra?.[column] ?? "";
 
-const IMAGE_COLUMN_ALIASES = ["unnamed0", "unnamed:0"];
+/** A row's test date as file names show it: 2026-09-24 or 20260924. */
+function dateForms(r: FlowResult): string[] {
+  return [r.date, r.date.replace(/-/g, "")];
+}
 
 /** Which combination view (if any) applies to this flow, resolved from
  *  its bucket/name and whichever of the required columns it really has —
@@ -58,22 +57,63 @@ export function resolveComboConfig(flow: Flow): ComboConfig | null {
   const extraColumns = flow.extraColumns ?? [];
   const bucket = flow.group?.toLowerCase();
   const name = flow.name.toLowerCase();
+  const is = (...names: string[]) => names.includes(bucket ?? "") || names.includes(name);
+  const col = (...aliases: string[]) => findColumn(extraColumns, aliases);
 
   // AGA can be a bucket or, when its daily files sit directly in an "AGA"
   // folder, the flow's own name (see flows/README.md).
-  if (bucket === "aga" || name === "aga") {
-    const cols = AGA_FIELDS.map((f) => findColumn(extraColumns, f.aliases));
-    if (cols.some((c) => !c)) return null;
+  if (is("aga")) {
+    const entrypoint = col("entrypoint");
+    const lines = col("linecalculator", "linecalc");
+    const plan = col("plan");
+    const region = col("region");
+    if (!entrypoint || !lines || !plan || !region) return null;
+    const page = col("stepname");
     return {
-      fields: AGA_FIELDS.map((f, i) => extraField(f.label, cols[i] as string)),
-      imageColumn: findColumn(extraColumns, IMAGE_COLUMN_ALIASES),
-      screenshots: true,
+      fields: [
+        extraField("Entrypoint", entrypoint),
+        extraField("Line Calculator", lines),
+        extraField("Plan", plan),
+        extraField("Region", region),
+      ],
+      // {page}-{plan}-{lines}-{entrypoint}-{region}-{date}
+      screenshotNames: page
+        ? (r) =>
+            dateForms(r).map(
+              (d) =>
+                `${val(r, page)}-${val(r, plan)}-${val(r, lines)}-${val(r, entrypoint)}-${val(r, region)}-${d}`
+            )
+        : null,
     };
   }
 
-  if (bucket === "tiles" || name === "tiles") {
-    const userId = findColumn(extraColumns, ["userid"]);
-    const tileName = findColumn(extraColumns, ["tilenm", "tilename"]);
+  if (is("add a line", "aal")) {
+    const segment = col("customersegment", "segment");
+    const region = col("region");
+    const lines = col("linecalculator", "linecalc");
+    const plan = col("plan");
+    const page = col("stepname");
+    if (!segment || !region || !lines || !plan || !page) return null;
+    return {
+      fields: [
+        extraField("Customer Segment", segment),
+        extraField("Region", region),
+        extraField("Lines", lines),
+        extraField("Plan", plan),
+        extraField("Step Name", page),
+      ],
+      // Seg_{segments}_{region}_{lines}L_{plan}_STEP_{page}_{date}
+      screenshotNames: (r) =>
+        dateForms(r).map(
+          (d) =>
+            `Seg_${val(r, segment)}_${val(r, region)}_${val(r, lines)}L_${val(r, plan)}_STEP_${val(r, page)}_${d}`
+        ),
+    };
+  }
+
+  if (is("tiles")) {
+    const userId = col("userid");
+    const tileName = col("tilenm", "tilename");
     if (!userId || !tileName || !(flow.presentColumns?.id ?? true)) return null;
     return {
       fields: [
@@ -81,8 +121,7 @@ export function resolveComboConfig(flow: Flow): ComboConfig | null {
         { label: "Tile ID", get: (r) => r.id || "(blank)" },
         extraField("Tile Name", tileName),
       ],
-      imageColumn: null,
-      screenshots: false,
+      screenshotNames: null,
     };
   }
 
@@ -212,11 +251,10 @@ export function CombinationsSummary({
   const showJira = flow.presentColumns?.jira ?? true;
   const extraCols = flow.extraColumns ?? [];
 
-  const imgKey =
-    config.imageColumn && detailPick
-      ? sanitizeKey(detailPick.extra?.[config.imageColumn] ?? "")
-      : "";
-  const imgUrl = imgKey ? flow.imagesByKey?.[imgKey] : undefined;
+  const shotNames = config.screenshotNames && detailPick ? config.screenshotNames(detailPick) : [];
+  const imgUrl = shotNames
+    .map((n) => flow.imagesByKey?.[sanitizeKey(n)])
+    .find((u) => !!u);
 
   return (
     <div className="combo">
@@ -390,15 +428,15 @@ export function CombinationsSummary({
         </div>
       )}
 
-      {config.screenshots && detailPick && (
+      {config.screenshotNames && detailPick && (
         <div className="drill-image">
           {imgUrl ? (
             <img src={imgUrl} alt={`Screenshot for ${detailPick.id}`} />
           ) : (
             <p className="drill-image-empty">
-              {config.imageColumn
-                ? "No matching image found for this row's “Unnamed: 0” value."
-                : "This flow has no “Unnamed: 0” column, so screenshots can't be matched."}
+              No screenshot found. Expected a file in this flow's{" "}
+              <code>screenshots</code> folder named <code>{shotNames[0]}</code>
+              (.png / .jpg).
             </p>
           )}
         </div>

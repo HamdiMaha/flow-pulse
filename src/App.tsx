@@ -100,7 +100,7 @@ export function App() {
     if (p === "custom") setCustomRange(range);
   };
 
-  // AGA and Tiles get the Combinations Summary view instead of the plain
+  // AGA, AAL and Tiles get the Combinations Summary view instead of the plain
   // table — only when their key columns are really there (falls back to
   // the plain table otherwise).
   const comboConfig = resolveComboConfig(flow);

@@ -31,8 +31,8 @@ export interface Flow {
   extraColumns?: string[];
   /** Image files found alongside this flow's Excel files (same folder),
    *  keyed by their sanitized filename (no extension) -> a usable
-   *  <img src> URL. Matched against a row's "Unnamed: 0" column value
-   *  for the AGA Combinations Summary view. */
+   *  <img src> URL. Matched against a screenshot
+   *  name built from a row's column values (Combinations Summary). */
   imagesByKey?: Record<string, string>;
   /** Which of the fixed columns actually exist in the source — date and
    *  status are always required so always present. Undefined (e.g. the

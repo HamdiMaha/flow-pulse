@@ -20,7 +20,7 @@ import { Insights } from "./components/Insights";
 import { AiSummary } from "./components/AiSummary";
 import { Breakdown } from "./components/Breakdown";
 import { ResultsTable } from "./components/ResultsTable";
-import { CombinationsSummary, resolveComboColumns } from "./components/CombinationsSummary";
+import { CombinationsSummary, resolveComboConfig } from "./components/CombinationsSummary";
 
 // Rendered only for the brief window before loadFlows() resolves — keeps
 // every hook below unconditional (Rules of Hooks) instead of needing a
@@ -102,15 +102,10 @@ export function App() {
     if (p === "custom") setCustomRange(range);
   };
 
-  // AGA gets the Combinations Summary view instead of the plain table —
-  // hardcoded to that bucket for now, and only when its columns are
-  // actually there (falls back to the plain table otherwise). AGA can be
-  // either a bucket wrapping flows (flow.group) or, when its daily files
-  // sit directly in an "AGA" folder with no per-flow subfolder, the flow's
-  // own name (see flows/README.md's "Add a Line" example — same rule).
-  const isAga =
-    flow.group?.toLowerCase() === "aga" || flow.name.toLowerCase() === "aga";
-  const comboColumns = isAga ? resolveComboColumns(flow) : null;
+  // AGA and Tiles get the Combinations Summary view instead of the plain
+  // table — only when their key columns are really there (falls back to
+  // the plain table otherwise).
+  const comboConfig = resolveComboConfig(flow);
 
   if (!loaded) {
     return (
@@ -173,8 +168,8 @@ export function App() {
 
         <Breakdown flow={flow} results={inRange} onPick={handleBreakdownPick} />
 
-        {comboColumns ? (
-          <CombinationsSummary flow={flow} results={inRange} columns={comboColumns} />
+        {comboConfig ? (
+          <CombinationsSummary flow={flow} results={inRange} config={comboConfig} />
         ) : (
           <ResultsTable
             results={inRange}

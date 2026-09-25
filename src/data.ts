@@ -124,6 +124,30 @@ function imagesByFolder(): Map<string, Record<string, string>> {
   return map;
 }
 
+/** Columns dropped from every flow in a given (lowercased) bucket — the
+ *  team doesn't want them shown for Tiles. Compared normalized (case,
+ *  spaces, underscores, dashes ignored). */
+const HIDDEN_COLUMNS_BY_BUCKET: Record<string, string[]> = {
+  tiles: ["bup", "logfile"],
+};
+
+function normalizeHeader(h: string): string {
+  return h.toLowerCase().replace(/[_\s-]+/g, "");
+}
+
+function hideColumns(flow: Flow, hidden: string[]): void {
+  const drop = new Set(
+    (flow.extraColumns ?? []).filter((c) => hidden.includes(normalizeHeader(c)))
+  );
+  if (drop.size === 0) return;
+  const kept = (flow.extraColumns ?? []).filter((c) => !drop.has(c));
+  flow.extraColumns = kept.length ? kept : undefined;
+  for (const r of flow.results) {
+    if (!r.extra) continue;
+    for (const c of drop) delete r.extra[c];
+  }
+}
+
 /** Fetch a workbook and convert its first sheet to CSV text, so the rest
  *  of the pipeline (parseCsv.ts) doesn't need to know xlsx exists. */
 async function readFirstSheetAsCsv(url: string): Promise<string> {
@@ -196,6 +220,8 @@ async function loadFlowsFolder(): Promise<Flow[]> {
 
     const merged = mergeFlowParts(flowName, parts);
     merged.group = group;
+    const hidden = group ? HIDDEN_COLUMNS_BY_BUCKET[group.toLowerCase()] : undefined;
+    if (hidden) hideColumns(merged, hidden);
     merged.imagesByKey = images.get(folderKey);
     merged.source =
       parts.length > 1

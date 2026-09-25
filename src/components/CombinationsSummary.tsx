@@ -3,25 +3,16 @@ import type { Flow, FlowResult } from "../types";
 import { fmtDay, sanitizeKey } from "../lib";
 
 /* ------------------------------------------------------------------ *
- * AGA-specific view (hardcoded to that bucket, not a general per-bucket
- * config — see conversation history for why): cascading dropdown filters
- * over Entrypoint / Line Calculator / Plan / Region, a "Combinations
- * Summary" table (one row per unique combination + pass rate), and
- * picking a row there reveals "Detailed annotations for selected combo"
- * (every column for the matching raw rows), and picking a row THERE
- * reveals its screenshot if the team uploaded one — matched by the raw
- * value of the sheet's "Unnamed: 0" column (a stray index column common
- * in pandas-exported Excel files).
+ * "Combinations Summary" view — hardcoded per bucket (AGA, Tiles), not a
+ * general per-bucket setting: cascading dropdown filters over that
+ * bucket's key columns, a summary table (one row per unique combination
+ * + success rate), and picking a row reveals "Detailed annotations for
+ * selected combo" (every column for the matching raw rows).
+ *
+ * AGA additionally shows a screenshot when a detail row is picked,
+ * matched by the raw value of the sheet's "Unnamed: 0" column (a stray
+ * index column common in pandas-exported Excel files).
  * ------------------------------------------------------------------ */
-
-const FIELDS = [
-  { label: "Entrypoint", aliases: ["entrypoint"] },
-  { label: "Line Calculator", aliases: ["linecalculator", "linecalc"] },
-  { label: "Plan", aliases: ["plan"] },
-  { label: "Region", aliases: ["region"] },
-] as const;
-
-const IMAGE_COLUMN_ALIASES = ["unnamed0", "unnamed:0"];
 
 function normalizeHeader(h: string): string {
   return h.toLowerCase().replace(/[_\s-]+/g, "");
@@ -35,31 +26,67 @@ function findColumn(extraColumns: string[], aliases: readonly string[]): string 
   return null;
 }
 
-interface ComboColumns {
-  entrypoint: string;
-  lineCalculator: string;
-  plan: string;
-  region: string;
-  imageColumn: string | null;
+export interface ComboField {
+  label: string;
+  get: (r: FlowResult) => string;
 }
 
-/** Resolves the fixed AGA columns from whatever this flow's actual
- *  headers are — null if any of the four required ones is missing, so
- *  the caller can fall back to the plain Results Table instead. */
-export function resolveComboColumns(flow: Flow): ComboColumns | null {
+export interface ComboConfig {
+  fields: ComboField[];
+  /** Column whose value names the row's screenshot; null = no screenshots. */
+  imageColumn: string | null;
+  screenshots: boolean;
+}
+
+function extraField(label: string, column: string): ComboField {
+  return { label, get: (r) => r.extra?.[column] || "(blank)" };
+}
+
+const AGA_FIELDS = [
+  { label: "Entrypoint", aliases: ["entrypoint"] },
+  { label: "Line Calculator", aliases: ["linecalculator", "linecalc"] },
+  { label: "Plan", aliases: ["plan"] },
+  { label: "Region", aliases: ["region"] },
+] as const;
+
+const IMAGE_COLUMN_ALIASES = ["unnamed0", "unnamed:0"];
+
+/** Which combination view (if any) applies to this flow, resolved from
+ *  its bucket/name and whichever of the required columns it really has —
+ *  null means "use the plain Results Table". */
+export function resolveComboConfig(flow: Flow): ComboConfig | null {
   const extraColumns = flow.extraColumns ?? [];
-  const entrypoint = findColumn(extraColumns, FIELDS[0].aliases);
-  const lineCalculator = findColumn(extraColumns, FIELDS[1].aliases);
-  const plan = findColumn(extraColumns, FIELDS[2].aliases);
-  const region = findColumn(extraColumns, FIELDS[3].aliases);
-  if (!entrypoint || !lineCalculator || !plan || !region) return null;
-  return {
-    entrypoint,
-    lineCalculator,
-    plan,
-    region,
-    imageColumn: findColumn(extraColumns, IMAGE_COLUMN_ALIASES),
-  };
+  const bucket = flow.group?.toLowerCase();
+  const name = flow.name.toLowerCase();
+
+  // AGA can be a bucket or, when its daily files sit directly in an "AGA"
+  // folder, the flow's own name (see flows/README.md).
+  if (bucket === "aga" || name === "aga") {
+    const cols = AGA_FIELDS.map((f) => findColumn(extraColumns, f.aliases));
+    if (cols.some((c) => !c)) return null;
+    return {
+      fields: AGA_FIELDS.map((f, i) => extraField(f.label, cols[i] as string)),
+      imageColumn: findColumn(extraColumns, IMAGE_COLUMN_ALIASES),
+      screenshots: true,
+    };
+  }
+
+  if (bucket === "tiles" || name === "tiles") {
+    const userId = findColumn(extraColumns, ["userid"]);
+    const tileName = findColumn(extraColumns, ["tilenm", "tilename"]);
+    if (!userId || !tileName || !(flow.presentColumns?.id ?? true)) return null;
+    return {
+      fields: [
+        extraField("User ID", userId),
+        { label: "Tile ID", get: (r) => r.id || "(blank)" },
+        extraField("Tile Name", tileName),
+      ],
+      imageColumn: null,
+      screenshots: false,
+    };
+  }
+
+  return null;
 }
 
 interface SummaryRow {
@@ -75,18 +102,13 @@ const KEY_SEP = "␟";
 export function CombinationsSummary({
   flow,
   results,
-  columns,
+  config,
 }: {
   flow: Flow;
   results: FlowResult[];
-  columns: ComboColumns;
+  config: ComboConfig;
 }) {
-  const fieldCols = [
-    columns.entrypoint,
-    columns.lineCalculator,
-    columns.plan,
-    columns.region,
-  ];
+  const { fields } = config;
 
   const [selections, setSelections] = useState<string[]>([]);
   const [successRateFilter, setSuccessRateFilter] = useState("");
@@ -99,8 +121,6 @@ export function CombinationsSummary({
     setSummaryPick(null);
     setDetailPick(null);
   }, [flow.id]);
-
-  const valueOf = (r: FlowResult, col: string) => r.extra?.[col] || "(blank)";
 
   const setSelectionAt = (i: number, v: string) => {
     setSelections((prev) => {
@@ -115,9 +135,9 @@ export function CombinationsSummary({
 
   const optionsFor = (i: number): string[] => {
     const pool = results.filter((r) =>
-      selections.slice(0, i).every((v, j) => !v || valueOf(r, fieldCols[j]) === v)
+      selections.slice(0, i).every((v, j) => !v || fields[j].get(r) === v)
     );
-    return [...new Set(pool.map((r) => valueOf(r, fieldCols[i])))].sort((a, b) =>
+    return [...new Set(pool.map((r) => fields[i].get(r)))].sort((a, b) =>
       a.localeCompare(b)
     );
   };
@@ -125,18 +145,18 @@ export function CombinationsSummary({
   const scoped = useMemo(
     () =>
       results.filter((r) =>
-        selections.every((v, i) => !v || valueOf(r, fieldCols[i]) === v)
+        selections.every((v, i) => !v || fields[i].get(r) === v)
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [results, selections]
+    [results, selections, config]
   );
 
   const summaryRows: SummaryRow[] = useMemo(() => {
     const map = new Map<string, SummaryRow>();
     for (const r of scoped) {
       const values: Record<string, string> = {};
-      for (let i = 0; i < FIELDS.length; i++) values[FIELDS[i].label] = valueOf(r, fieldCols[i]);
-      const key = FIELDS.map((f) => values[f.label]).join(KEY_SEP);
+      for (const f of fields) values[f.label] = f.get(r);
+      const key = fields.map((f) => values[f.label]).join(KEY_SEP);
       let row = map.get(key);
       if (!row) {
         row = { values, total: 0, passed: 0, failed: 0, passRate: 0 };
@@ -153,12 +173,12 @@ export function CombinationsSummary({
       }))
       .sort((a, b) => a.passRate - b.passRate || b.total - a.total);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scoped]);
+  }, [scoped, config]);
 
   // Success Rate isn't a raw column — it's computed per combination, so
   // its dropdown lists whatever rates actually show up in the summary
-  // table right now (after the other four filters), not a cascading
-  // per-row value like the others.
+  // table right now (after the other filters), not a cascading per-row
+  // value like the others.
   const successRateOptions = useMemo(
     () =>
       [...new Set(summaryRows.map((r) => Math.round(r.passRate)))].sort((a, b) => a - b),
@@ -171,11 +191,9 @@ export function CombinationsSummary({
 
   const detailRows = useMemo(() => {
     if (!summaryPick) return [];
-    return scoped.filter((r) =>
-      FIELDS.every((f, fi) => valueOf(r, fieldCols[fi]) === summaryPick[f.label])
-    );
+    return scoped.filter((r) => fields.every((f) => f.get(r) === summaryPick[f.label]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scoped, summaryPick]);
+  }, [scoped, summaryPick, config]);
 
   const showId = flow.presentColumns?.id ?? true;
   const showCategory = flow.presentColumns?.category ?? true;
@@ -184,8 +202,8 @@ export function CombinationsSummary({
   const extraCols = flow.extraColumns ?? [];
 
   const imgKey =
-    columns.imageColumn && detailPick
-      ? sanitizeKey(detailPick.extra?.[columns.imageColumn] ?? "")
+    config.imageColumn && detailPick
+      ? sanitizeKey(detailPick.extra?.[config.imageColumn] ?? "")
       : "";
   const imgUrl = imgKey ? flow.imagesByKey?.[imgKey] : undefined;
 
@@ -194,7 +212,7 @@ export function CombinationsSummary({
       <h3 className="combo-title">Combinations Summary</h3>
 
       <div className="drill-filters">
-        {FIELDS.map((f, i) => (
+        {fields.map((f, i) => (
           <div className="drill-filter" key={f.label}>
             <label htmlFor={`combo-${f.label}`}>{f.label}</label>
             <select
@@ -236,7 +254,7 @@ export function CombinationsSummary({
         <table>
           <thead>
             <tr>
-              {FIELDS.map((f) => (
+              {fields.map((f) => (
                 <th key={f.label}>{f.label}</th>
               ))}
               <th>Success Rate</th>
@@ -244,9 +262,9 @@ export function CombinationsSummary({
           </thead>
           <tbody>
             {filteredSummaryRows.map((row) => {
-              const key = FIELDS.map((f) => row.values[f.label]).join(KEY_SEP);
+              const key = fields.map((f) => row.values[f.label]).join(KEY_SEP);
               const isActive =
-                !!summaryPick && FIELDS.every((f) => summaryPick[f.label] === row.values[f.label]);
+                !!summaryPick && fields.every((f) => summaryPick[f.label] === row.values[f.label]);
               return (
                 <tr
                   key={key}
@@ -256,7 +274,7 @@ export function CombinationsSummary({
                     setDetailPick(null);
                   }}
                 >
-                  {FIELDS.map((f) => (
+                  {fields.map((f) => (
                     <td key={f.label}>{row.values[f.label]}</td>
                   ))}
                   <td className={row.passRate < 90 ? "breakdown-rate-low" : ""}>
@@ -267,7 +285,7 @@ export function CombinationsSummary({
             })}
             {filteredSummaryRows.length === 0 && (
               <tr>
-                <td colSpan={FIELDS.length + 1} className="empty">
+                <td colSpan={fields.length + 1} className="empty">
                   No results match these filters.
                 </td>
               </tr>
@@ -341,13 +359,13 @@ export function CombinationsSummary({
         </div>
       )}
 
-      {detailPick && (
+      {config.screenshots && detailPick && (
         <div className="drill-image">
           {imgUrl ? (
             <img src={imgUrl} alt={`Screenshot for ${detailPick.id}`} />
           ) : (
             <p className="drill-image-empty">
-              {columns.imageColumn
+              {config.imageColumn
                 ? "No matching image found for this row's “Unnamed: 0” value."
                 : "This flow has no “Unnamed: 0” column, so screenshots can't be matched."}
             </p>
